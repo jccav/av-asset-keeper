@@ -17,6 +17,7 @@ export type Database = {
       checkout_log: {
         Row: {
           borrower_name: string
+          checkout_condition_counts: Json | null
           checkout_date: string
           condition_on_return:
             | Database["public"]["Enums"]["equipment_condition"]
@@ -30,11 +31,13 @@ export type Database = {
           quantity: number
           quantity_returned: number
           return_date: string | null
+          return_notes: string | null
           returned_by: string | null
           team_name: string | null
         }
         Insert: {
           borrower_name: string
+          checkout_condition_counts?: Json | null
           checkout_date?: string
           condition_on_return?:
             | Database["public"]["Enums"]["equipment_condition"]
@@ -48,11 +51,13 @@ export type Database = {
           quantity?: number
           quantity_returned?: number
           return_date?: string | null
+          return_notes?: string | null
           returned_by?: string | null
           team_name?: string | null
         }
         Update: {
           borrower_name?: string
+          checkout_condition_counts?: Json | null
           checkout_date?: string
           condition_on_return?:
             | Database["public"]["Enums"]["equipment_condition"]
@@ -66,6 +71,7 @@ export type Database = {
           quantity?: number
           quantity_returned?: number
           return_date?: string | null
+          return_notes?: string | null
           returned_by?: string | null
           team_name?: string | null
         }

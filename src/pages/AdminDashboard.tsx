@@ -98,7 +98,9 @@ export default function AdminDashboard() {
   const openForceReturn = (checkout: any) => {
     const remaining = checkout.quantity - (checkout.quantity_returned ?? 0);
     setForceReturnTarget(checkout);
-    setForceReturnConditionCounts({ good: remaining });
+    const checkoutCounts = (checkout.checkout_condition_counts ?? {}) as Record<string, number>;
+    const total = Object.values(checkoutCounts).reduce((a: number, b: number) => a + b, 0);
+    setForceReturnConditionCounts(total > 0 ? checkoutCounts : { good: remaining });
   };
 
   const forceReturnMax = forceReturnTarget ? forceReturnTarget.quantity - (forceReturnTarget.quantity_returned ?? 0) : 0;
@@ -150,18 +152,24 @@ export default function AdminDashboard() {
               {activeCheckouts.map((c: any) => {
                 const remaining = c.quantity - (c.quantity_returned ?? 0);
                 return (
-                  <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-                    <div>
-                      <p className="font-medium">
-                        {c.equipment?.name ?? "Unknown"}
-                        <Badge variant="outline" className="ml-2">
-                          Qty: {remaining}{c.quantity_returned > 0 ? ` (${c.quantity_returned} returned)` : ""}
-                        </Badge>
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin || "—"}</code>
-                      </p>
-                    </div>
+                   <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+                     <div>
+                       <p className="font-medium">
+                         {c.equipment?.name ?? "Unknown"}
+                         <Badge variant="outline" className="ml-2">
+                           Qty: {remaining}{c.quantity_returned > 0 ? ` (${c.quantity_returned} returned)` : ""}
+                         </Badge>
+                       </p>
+                       <p className="text-sm text-muted-foreground">
+                         {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin || "—"}</code>
+                       </p>
+                       {c.notes && (
+                         <p className="text-sm text-muted-foreground mt-1">📝 Checkout notes: {c.notes}</p>
+                       )}
+                       {c.return_notes && (
+                         <p className="text-sm text-muted-foreground mt-1">📝 Return notes: {c.return_notes}</p>
+                       )}
+                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right text-sm">
                         <p className="text-muted-foreground">Since {format(new Date(c.checkout_date), "MMM d, yyyy")}</p>

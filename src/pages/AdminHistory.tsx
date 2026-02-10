@@ -62,6 +62,8 @@ export default function AdminHistory() {
                 <TableHead>Qty Out</TableHead>
                 <TableHead>Qty Returned</TableHead>
                 <TableHead>PIN</TableHead>
+                <TableHead>Checkout Notes</TableHead>
+                <TableHead>Return Notes</TableHead>
                 <TableHead>Checked Out</TableHead>
                 <TableHead>Returned</TableHead>
                 <TableHead>Returned By</TableHead>
@@ -78,6 +80,8 @@ export default function AdminHistory() {
                   <TableCell>{log.quantity ?? 1}</TableCell>
                   <TableCell>{log.quantity_returned ?? 0}</TableCell>
                   <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin || "—"}</code></TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={log.notes || ""}>{log.notes || "—"}</TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={log.return_notes || ""}>{log.return_notes || "—"}</TableCell>
                   <TableCell>{format(new Date(log.checkout_date), "MMM d, yyyy h:mm a")}</TableCell>
                   <TableCell>{log.return_date ? format(new Date(log.return_date), "MMM d, yyyy h:mm a") : "—"}</TableCell>
                   <TableCell>{log.returned_by || "—"}</TableCell>
@@ -118,7 +122,7 @@ export default function AdminHistory() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={11} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
