@@ -1,0 +1,62 @@
+import { Package, LayoutDashboard, Archive, History, Users, LogOut } from "lucide-react";
+import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+
+const navItems = [
+  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Inventory", url: "/admin/inventory", icon: Archive },
+  { title: "History", url: "/admin/history", icon: History },
+  { title: "Admins", url: "/admin/admins", icon: Users },
+];
+
+export function AdminSidebar() {
+  const { signOut, user, role } = useAuth();
+
+  return (
+    <Sidebar>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center gap-2 px-4 py-3">
+            <Package className="h-5 w-5" />
+            <span className="font-semibold">AV Tracker</span>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} end className="hover:bg-sidebar-accent" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                      <item.icon className="mr-2 h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-4">
+        <div className="mb-2 truncate text-xs text-sidebar-foreground/70">{user?.email}</div>
+        <div className="mb-3 text-xs font-medium capitalize text-sidebar-primary">
+          {role === "master_admin" ? "Master Admin" : "Admin"}
+        </div>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={signOut}>
+          <LogOut className="h-4 w-4" /> Sign Out
+        </Button>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
