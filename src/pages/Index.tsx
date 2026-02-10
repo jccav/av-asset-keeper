@@ -307,10 +307,6 @@ export default function Index() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="checkout-qty">Quantity * <span className="text-xs text-muted-foreground">(max {checkoutItem?.quantity_available ?? 1})</span></Label>
-              <Input id="checkout-qty" type="number" min={1} max={checkoutItem?.quantity_available ?? 1} value={checkoutQty} onChange={(e) => setCheckoutQty(Math.max(1, Math.min(checkoutItem?.quantity_available ?? 1, parseInt(e.target.value) || 1)))} />
-            </div>
-            <div>
               <Label htmlFor="borrower">Your Name *</Label>
               <Input id="borrower" value={borrowerName} onChange={(e) => setBorrowerName(e.target.value)} placeholder="John Doe" />
             </div>
@@ -321,6 +317,10 @@ export default function Index() {
             <div>
               <Label htmlFor="pin">4-Digit PIN * <span className="text-xs text-muted-foreground">(you'll need this to return)</span></Label>
               <Input id="pin" value={checkoutPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setCheckoutPin(v); }} placeholder="e.g. 1234" inputMode="numeric" maxLength={4} />
+            </div>
+            <div>
+              <Label htmlFor="checkout-qty">Quantity * <span className="text-xs text-muted-foreground">(max {checkoutItem?.quantity_available ?? 1})</span></Label>
+              <Input id="checkout-qty" type="number" min={1} max={checkoutItem?.quantity_available ?? 1} value={checkoutQty} onChange={(e) => setCheckoutQty(Math.max(1, Math.min(checkoutItem?.quantity_available ?? 1, parseInt(e.target.value) || 1)))} />
             </div>
             <div>
               <Label htmlFor="return-date">Expected Return Date</Label>
