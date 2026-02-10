@@ -59,6 +59,7 @@ export default function AdminHistory() {
                 <TableHead>Equipment</TableHead>
                 <TableHead>Borrower</TableHead>
                 <TableHead>On Behalf Of</TableHead>
+                <TableHead>Qty</TableHead>
                 <TableHead>PIN</TableHead>
                 <TableHead>Checked Out</TableHead>
                 <TableHead>Returned</TableHead>
@@ -73,6 +74,7 @@ export default function AdminHistory() {
                   <TableCell className="font-medium">{log.equipment?.name ?? "—"}</TableCell>
                   <TableCell>{log.borrower_name}</TableCell>
                   <TableCell>{log.team_name || "—"}</TableCell>
+                  <TableCell>{log.quantity ?? 1}</TableCell>
                   <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin || "—"}</code></TableCell>
                   <TableCell>{format(new Date(log.checkout_date), "MMM d, yyyy h:mm a")}</TableCell>
                   <TableCell>{log.return_date ? format(new Date(log.return_date), "MMM d, yyyy h:mm a") : "—"}</TableCell>
@@ -104,7 +106,7 @@ export default function AdminHistory() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

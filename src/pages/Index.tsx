@@ -41,8 +41,11 @@ export default function Index() {
   const [returnBorrower, setReturnBorrower] = useState("");
   const [returnTeam, setReturnTeam] = useState("");
   const [returnPin, setReturnPin] = useState("");
+  const [returnQuantity, setReturnQuantity] = useState(1);
+  const [returnMaxQty, setReturnMaxQty] = useState(1);
   const [borrowerName, setBorrowerName] = useState("");
   const [checkoutPin, setCheckoutPin] = useState("");
+  const [checkoutQty, setCheckoutQty] = useState(1);
   const [teamName, setTeamName] = useState("");
   const [expectedReturn, setExpectedReturn] = useState("");
   const [checkoutNotes, setCheckoutNotes] = useState("");
@@ -65,6 +68,16 @@ export default function Index() {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       if (!checkoutItem) return;
+      // Validate quantity available
+      const { data: current, error: fetchErr } = await supabase
+        .from("equipment")
+        .select("quantity_available")
+        .eq("id", checkoutItem.id)
+        .single();
+      if (fetchErr) throw fetchErr;
+      if (!current || current.quantity_available < checkoutQty) {
+        throw new Error(`Only ${current?.quantity_available ?? 0} available. You requested ${checkoutQty}.`);
+      }
       const { error: logError } = await supabase.from("checkout_log").insert({
         equipment_id: checkoutItem.id,
         borrower_name: borrowerName,
@@ -72,11 +85,13 @@ export default function Index() {
         expected_return: expectedReturn || null,
         notes: checkoutNotes || null,
         pin: checkoutPin,
+        quantity: checkoutQty,
       });
       if (logError) throw logError;
+      const newAvailable = current.quantity_available - checkoutQty;
       const { error: eqError } = await supabase
         .from("equipment")
-        .update({ is_available: false })
+        .update({ quantity_available: newAvailable, is_available: newAvailable > 0 })
         .eq("id", checkoutItem.id);
       if (eqError) throw eqError;
     },
@@ -93,7 +108,7 @@ export default function Index() {
       if (!returnItem) return;
       const { data: log, error: findError } = await supabase
         .from("checkout_log")
-        .select("id, borrower_name, pin")
+        .select("id, borrower_name, pin, quantity")
         .eq("equipment_id", returnItem.id)
         .is("return_date", null)
         .order("checkout_date", { ascending: false })
@@ -114,9 +129,14 @@ export default function Index() {
         })
         .eq("id", log.id);
       if (logError) throw logError;
+      // Restore quantity
+      const { data: eq } = await supabase.from("equipment").select("quantity_available").eq("id", returnItem.id).single();
+      const restored = (eq?.quantity_available ?? 0) + (log.quantity ?? returnQuantity);
+      const { data: eqTotal } = await supabase.from("equipment").select("total_quantity").eq("id", returnItem.id).single();
+      const cappedRestored = Math.min(restored, eqTotal?.total_quantity ?? restored);
       const { error: eqError } = await supabase
         .from("equipment")
-        .update({ is_available: true, condition: returnCondition as Equipment["condition"] })
+        .update({ quantity_available: cappedRestored, is_available: true, condition: returnCondition as Equipment["condition"] })
         .eq("id", returnItem.id);
       if (eqError) throw eqError;
     },
@@ -132,6 +152,7 @@ export default function Index() {
     setCheckoutItem(null);
     setBorrowerName("");
     setCheckoutPin("");
+    setCheckoutQty(1);
     setTeamName("");
     setExpectedReturn("");
     setCheckoutNotes("");
@@ -142,6 +163,8 @@ export default function Index() {
     setReturnBorrower("");
     setReturnTeam("");
     setReturnPin("");
+    setReturnQuantity(1);
+    setReturnMaxQty(1);
     setTeamName("");
     setReturnCondition("good");
     setReturnNotes("");
@@ -152,7 +175,7 @@ export default function Index() {
     // Fetch who checked it out
     const { data } = await supabase
       .from("checkout_log")
-      .select("borrower_name, team_name")
+      .select("borrower_name, team_name, quantity")
       .eq("equipment_id", item.id)
       .is("return_date", null)
       .order("checkout_date", { ascending: false })
@@ -160,6 +183,8 @@ export default function Index() {
       .maybeSingle();
     setReturnBorrower(data?.borrower_name ?? "Unknown");
     setReturnTeam(data?.team_name ?? "");
+    setReturnQuantity(data?.quantity ?? 1);
+    setReturnMaxQty(data?.quantity ?? 1);
   };
 
   const filtered = equipment.filter((e) => {
@@ -234,9 +259,9 @@ export default function Index() {
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base font-semibold leading-tight">{item.name}</CardTitle>
                     <Badge
-                      className={item.is_available ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}
+                      className={item.quantity_available > 0 ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}
                     >
-                      {item.is_available ? "Available" : "Checked Out"}
+                      {item.quantity_available > 0 ? `${item.quantity_available} / ${item.total_quantity} Available` : "All Checked Out"}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -250,12 +275,13 @@ export default function Index() {
                   {item.notes && (
                     <p className="text-sm text-muted-foreground line-clamp-2">{item.notes}</p>
                   )}
-                  <div className="mt-2">
-                    {item.is_available ? (
-                      <Button className="w-full gap-2" onClick={() => setCheckoutItem(item)}>
+                  <div className="mt-2 flex gap-2">
+                    {item.quantity_available > 0 ? (
+                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); setCheckoutQty(1); }}>
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
-                    ) : (
+                    ) : null}
+                    {!item.is_available && (
                       <Button variant="outline" className="w-full gap-2" onClick={() => openReturn(item)}>
                         <ArrowRightLeft className="h-4 w-4" /> Return
                       </Button>
@@ -273,9 +299,17 @@ export default function Index() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Check Out: {checkoutItem?.name}</DialogTitle>
-            <DialogDescription>Fill in your details to sign out this equipment.</DialogDescription>
+            <DialogDescription>
+              {checkoutItem?.quantity_available !== undefined
+                ? `${checkoutItem.quantity_available} of ${checkoutItem.total_quantity} available.`
+                : "Fill in your details to sign out this equipment."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="checkout-qty">Quantity * <span className="text-xs text-muted-foreground">(max {checkoutItem?.quantity_available ?? 1})</span></Label>
+              <Input id="checkout-qty" type="number" min={1} max={checkoutItem?.quantity_available ?? 1} value={checkoutQty} onChange={(e) => setCheckoutQty(Math.max(1, Math.min(checkoutItem?.quantity_available ?? 1, parseInt(e.target.value) || 1)))} />
+            </div>
             <div>
               <Label htmlFor="borrower">Your Name *</Label>
               <Input id="borrower" value={borrowerName} onChange={(e) => setBorrowerName(e.target.value)} placeholder="John Doe" />
@@ -299,7 +333,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetCheckout}>Cancel</Button>
-            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || checkoutMutation.isPending}>
+            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || checkoutQty < 1 || checkoutMutation.isPending}>
               {checkoutMutation.isPending ? "Processing..." : "Confirm Checkout"}
             </Button>
           </DialogFooter>

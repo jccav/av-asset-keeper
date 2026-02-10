@@ -27,6 +27,7 @@ export type Database = {
           id: string
           notes: string | null
           pin: string | null
+          quantity: number
           return_date: string | null
           returned_by: string | null
           team_name: string | null
@@ -43,6 +44,7 @@ export type Database = {
           id?: string
           notes?: string | null
           pin?: string | null
+          quantity?: number
           return_date?: string | null
           returned_by?: string | null
           team_name?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           id?: string
           notes?: string | null
           pin?: string | null
+          quantity?: number
           return_date?: string | null
           returned_by?: string | null
           team_name?: string | null
@@ -83,6 +86,8 @@ export type Database = {
           is_retired: boolean
           name: string
           notes: string | null
+          quantity_available: number
+          total_quantity: number
           updated_at: string
         }
         Insert: {
@@ -94,6 +99,8 @@ export type Database = {
           is_retired?: boolean
           name: string
           notes?: string | null
+          quantity_available?: number
+          total_quantity?: number
           updated_at?: string
         }
         Update: {
@@ -105,6 +112,8 @@ export type Database = {
           is_retired?: boolean
           name?: string
           notes?: string | null
+          quantity_available?: number
+          total_quantity?: number
           updated_at?: string
         }
         Relationships: []
