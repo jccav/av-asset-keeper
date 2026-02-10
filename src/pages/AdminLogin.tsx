@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +10,19 @@ import { Package, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function AdminLogin() {
-  const { signIn } = useAuth();
+  const { signIn, role, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Navigate when role is loaded after login
+  useEffect(() => {
+    if (user && role) {
+      navigate("/admin", { replace: true });
+    }
+  }, [user, role, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,8 +31,6 @@ export default function AdminLogin() {
     setLoading(false);
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
-    } else {
-      navigate("/admin");
     }
   };
 
