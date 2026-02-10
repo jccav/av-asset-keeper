@@ -26,6 +26,7 @@ export type Database = {
           expected_return: string | null
           id: string
           notes: string | null
+          pin: string | null
           return_date: string | null
           team_name: string | null
         }
@@ -40,6 +41,7 @@ export type Database = {
           expected_return?: string | null
           id?: string
           notes?: string | null
+          pin?: string | null
           return_date?: string | null
           team_name?: string | null
         }
@@ -54,6 +56,7 @@ export type Database = {
           expected_return?: string | null
           id?: string
           notes?: string | null
+          pin?: string | null
           return_date?: string | null
           team_name?: string | null
         }
