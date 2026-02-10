@@ -49,9 +49,13 @@ export default function AdminDashboard() {
         .update({ return_date: new Date().toISOString(), returned_by: "Admin (force return)" })
         .eq("id", checkout.id);
       if (logError) throw logError;
+      // Restore quantity
+      const qty = checkout.quantity ?? 1;
+      const { data: eq } = await supabase.from("equipment").select("quantity_available, total_quantity").eq("id", checkout.equipment_id).single();
+      const restored = Math.min((eq?.quantity_available ?? 0) + qty, eq?.total_quantity ?? qty);
       const { error: eqError } = await supabase
         .from("equipment")
-        .update({ is_available: true })
+        .update({ quantity_available: restored, is_available: true })
         .eq("id", checkout.equipment_id);
       if (eqError) throw eqError;
     },

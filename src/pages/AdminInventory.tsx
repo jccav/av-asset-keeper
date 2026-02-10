@@ -28,7 +28,7 @@ export default function AdminInventory() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Equipment | null>(null);
-  const [form, setForm] = useState({ name: "", category: "audio" as string, condition: "good" as string, notes: "", is_available: true });
+  const [form, setForm] = useState({ name: "", category: "audio" as string, condition: "good" as string, notes: "", is_available: true, total_quantity: 1 });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["admin-equipment"],
@@ -59,12 +59,14 @@ export default function AdminInventory() {
         const { error } = await supabase.from("equipment").update({
           name: form.name, category: form.category as Equipment["category"],
           condition: form.condition as Equipment["condition"], notes: form.notes || null, is_available: form.is_available,
+          total_quantity: form.total_quantity, quantity_available: form.total_quantity,
         }).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("equipment").insert({
           name: form.name, category: form.category as Equipment["category"],
           condition: form.condition as Equipment["condition"], notes: form.notes || null, is_available: form.is_available,
+          total_quantity: form.total_quantity, quantity_available: form.total_quantity,
         });
         if (error) throw error;
       }
@@ -91,8 +93,8 @@ export default function AdminInventory() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", condition: "good", notes: "", is_available: true }); setDialogOpen(true); };
-  const openEdit = (item: Equipment) => { setEditing(item); setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "", is_available: item.is_available }); setDialogOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", condition: "good", notes: "", is_available: true, total_quantity: 1 }); setDialogOpen(true); };
+  const openEdit = (item: Equipment) => { setEditing(item); setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "", is_available: item.is_available, total_quantity: item.total_quantity }); setDialogOpen(true); };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   const filtered = equipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
@@ -124,6 +126,7 @@ export default function AdminInventory() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Qty</TableHead>
                     <TableHead>Condition</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -134,14 +137,15 @@ export default function AdminInventory() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
+                      <TableCell>{item.quantity_available} / {item.total_quantity}</TableCell>
                       <TableCell>
                         <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
                           {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={item.is_available ? "default" : "secondary"}>
-                          {item.is_available ? "Available" : "Checked Out"}
+                        <Badge variant={item.quantity_available > 0 ? "default" : "secondary"}>
+                          {item.quantity_available > 0 ? "Available" : "All Checked Out"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -154,7 +158,7 @@ export default function AdminInventory() {
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No equipment found</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No equipment found</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -210,6 +214,7 @@ export default function AdminInventory() {
           </DialogHeader>
           <div className="space-y-4">
             <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Shure SM58 Microphone" /></div>
+            <div><Label>Quantity</Label><Input type="number" min={1} value={form.total_quantity} onChange={(e) => setForm({ ...form, total_quantity: Math.max(1, parseInt(e.target.value) || 1) })} /></div>
             <div>
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
