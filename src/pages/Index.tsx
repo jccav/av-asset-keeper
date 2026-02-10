@@ -366,13 +366,16 @@ export default function Index() {
                 <CardContent className="flex flex-col gap-3">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{CATEGORY_LABELS[item.category]}</Badge>
-                    {Object.entries(((item as any).condition_counts ?? {}) as Record<string, number>)
-                      .filter(([, v]) => v > 0)
-                      .map(([k, v]) => (
-                        <Badge key={k} className={CONDITION_COLORS[k]}>
-                          {v} {k.charAt(0).toUpperCase() + k.slice(1)}
-                        </Badge>
-                      ))}
+                    {(["damaged", "bad", "fair", "good", "excellent"] as const)
+                      .filter((k) => (((item as any).condition_counts ?? {}) as Record<string, number>)[k] > 0)
+                      .map((k) => {
+                        const v = (((item as any).condition_counts ?? {}) as Record<string, number>)[k];
+                        return (
+                          <Badge key={k} className={CONDITION_COLORS[k]}>
+                            {v} {k.charAt(0).toUpperCase() + k.slice(1)}
+                          </Badge>
+                        );
+                      })}
                     {Object.keys(((item as any).condition_counts ?? {}) as Record<string, number>).length === 0 && (
                       <Badge className={CONDITION_COLORS[item.condition]}>
                         {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
