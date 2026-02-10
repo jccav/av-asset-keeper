@@ -67,10 +67,14 @@ export default function AdminDashboard() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const total = equipment.length;
-  const available = equipment.filter((e) => e.is_available).length;
-  const checkedOut = equipment.filter((e) => !e.is_available).length;
-  const damaged = equipment.filter((e) => e.condition === "damaged").length;
+  const total = equipment.reduce((sum, e) => sum + e.total_quantity, 0);
+  const available = equipment.reduce((sum, e) => sum + e.quantity_available, 0);
+  const checkedOut = total - available;
+  const damaged = equipment.reduce((sum, e) => {
+    const counts = (e as any).condition_counts as Record<string, number> | null;
+    if (counts) return sum + (counts.damaged ?? 0) + (counts.bad ?? 0);
+    return sum + (e.condition === "damaged" || e.condition === "bad" ? e.total_quantity : 0);
+  }, 0);
 
   const stats = [
     { label: "Total Items", value: total, icon: Package, color: "text-primary" },
