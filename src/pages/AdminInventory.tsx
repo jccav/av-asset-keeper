@@ -140,7 +140,7 @@ export default function AdminInventory() {
                       <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
                       <TableCell>{item.quantity_available} / {item.total_quantity}</TableCell>
                       <TableCell>
-                        <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
+                        <Badge variant={item.condition === "excellent" ? "default" : item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
                           {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
                         </Badge>
                       </TableCell>
@@ -199,7 +199,7 @@ export default function AdminInventory() {
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
                       <TableCell>
-                        <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
+                        <Badge variant={item.condition === "excellent" ? "default" : item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
                           {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
                         </Badge>
                       </TableCell>
@@ -256,9 +256,11 @@ export default function AdminInventory() {
               <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="excellent">Excellent</SelectItem>
                   <SelectItem value="good">Good</SelectItem>
                   <SelectItem value="fair">Fair</SelectItem>
                   <SelectItem value="damaged">Damaged</SelectItem>
+                  <SelectItem value="bad">Bad</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -59,7 +59,8 @@ export default function AdminHistory() {
                 <TableHead>Equipment</TableHead>
                 <TableHead>Borrower</TableHead>
                 <TableHead>On Behalf Of</TableHead>
-                <TableHead>Qty</TableHead>
+                <TableHead>Qty Out</TableHead>
+                <TableHead>Qty Returned</TableHead>
                 <TableHead>PIN</TableHead>
                 <TableHead>Checked Out</TableHead>
                 <TableHead>Returned</TableHead>
@@ -75,13 +76,14 @@ export default function AdminHistory() {
                   <TableCell>{log.borrower_name}</TableCell>
                   <TableCell>{log.team_name || "—"}</TableCell>
                   <TableCell>{log.quantity ?? 1}</TableCell>
+                  <TableCell>{log.quantity_returned ?? 0}</TableCell>
                   <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin || "—"}</code></TableCell>
                   <TableCell>{format(new Date(log.checkout_date), "MMM d, yyyy h:mm a")}</TableCell>
                   <TableCell>{log.return_date ? format(new Date(log.return_date), "MMM d, yyyy h:mm a") : "—"}</TableCell>
                   <TableCell>{log.returned_by || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={log.return_date ? "default" : "secondary"}>
-                      {log.return_date ? "Returned" : "Checked Out"}
+                    <Badge variant={log.return_date ? "default" : (log.quantity_returned ?? 0) > 0 ? "outline" : "secondary"}>
+                      {log.return_date ? "Returned" : (log.quantity_returned ?? 0) > 0 ? "Partially Returned" : "Checked Out"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -112,7 +114,7 @@ export default function AdminHistory() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={10} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
