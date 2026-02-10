@@ -55,6 +55,8 @@ export default function Index() {
   const [checkoutConditionCounts, setCheckoutConditionCounts] = useState<Record<string, number>>({ good: 1 });
   const [returnConditionCounts, setReturnConditionCounts] = useState<Record<string, number>>({ good: 1 });
   const [returnNotes, setReturnNotes] = useState("");
+  const [mergeTarget, setMergeTarget] = useState<any>(null);
+  const [showMergeConfirm, setShowMergeConfirm] = useState(false);
 
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ["equipment"],
@@ -70,7 +72,7 @@ export default function Index() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ forceMerge }: { forceMerge?: boolean } = {}) => {
       if (!checkoutItem) return;
       const checkoutTotal = Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0);
       if (checkoutTotal < 1) throw new Error("Specify at least 1 item to check out.");
@@ -84,17 +86,58 @@ export default function Index() {
       if (!current || current.quantity_available < checkoutTotal) {
         throw new Error(`Only ${current?.quantity_available ?? 0} available. You requested ${checkoutTotal}.`);
       }
-      const { error: logError } = await supabase.from("checkout_log").insert({
-        equipment_id: checkoutItem.id,
-        borrower_name: borrowerName,
-        team_name: teamName || null,
-        expected_return: expectedReturn || null,
-        notes: checkoutNotes || null,
-        pin: checkoutPin,
-        quantity: checkoutTotal,
-        checkout_condition_counts: checkoutConditionCounts,
-      });
-      if (logError) throw logError;
+
+      // Check for existing matching checkout to merge
+      if (!forceMerge) {
+        const { data: existing } = await supabase
+          .from("checkout_log")
+          .select("id, quantity, checkout_condition_counts")
+          .eq("equipment_id", checkoutItem.id)
+          .eq("borrower_name", borrowerName)
+          .eq("pin", checkoutPin)
+          .is("return_date", null)
+          .order("checkout_date", { ascending: false })
+          .limit(1);
+        const match = existing?.find(l => (l as any).quantity > 0);
+        if (match) {
+          setMergeTarget(match);
+          setShowMergeConfirm(true);
+          return "merge_prompt";
+        }
+      }
+
+      if (forceMerge && mergeTarget) {
+        // Merge into existing record
+        const existingCounts = (mergeTarget.checkout_condition_counts ?? {}) as Record<string, number>;
+        const mergedCounts: Record<string, number> = { ...existingCounts };
+        for (const [cond, qty] of Object.entries(checkoutConditionCounts)) {
+          if (qty > 0) mergedCounts[cond] = (mergedCounts[cond] ?? 0) + qty;
+        }
+        const newQty = mergeTarget.quantity + checkoutTotal;
+        const { error: mergeErr } = await supabase
+          .from("checkout_log")
+          .update({
+            quantity: newQty,
+            checkout_condition_counts: mergedCounts,
+            notes: checkoutNotes ? (mergeTarget.notes ? `${mergeTarget.notes}; ${checkoutNotes}` : checkoutNotes) : mergeTarget.notes,
+          })
+          .eq("id", mergeTarget.id);
+        if (mergeErr) throw mergeErr;
+      } else {
+        // New checkout record
+        const { error: logError } = await supabase.from("checkout_log").insert({
+          equipment_id: checkoutItem.id,
+          borrower_name: borrowerName,
+          team_name: teamName || null,
+          expected_return: expectedReturn || null,
+          notes: checkoutNotes || null,
+          pin: checkoutPin,
+          quantity: checkoutTotal,
+          checkout_condition_counts: checkoutConditionCounts,
+        });
+        if (logError) throw logError;
+      }
+
       // Subtract from condition_counts
       const counts = (current.condition_counts ?? {}) as Record<string, number>;
       for (const [cond, qty] of Object.entries(checkoutConditionCounts)) {
@@ -113,7 +156,8 @@ export default function Index() {
         .eq("id", checkoutItem.id);
       if (eqError) throw eqError;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result === "merge_prompt") return; // Don't close, showing merge dialog
       queryClient.invalidateQueries({ queryKey: ["equipment"] });
       toast({ title: "Checked out!", description: `${checkoutItem?.name} has been signed out.` });
       resetCheckout();
@@ -195,6 +239,8 @@ export default function Index() {
     setExpectedReturn("");
     setCheckoutNotes("");
     setCheckoutConditionCounts({ good: 1 });
+    setMergeTarget(null);
+    setShowMergeConfirm(false);
   };
 
   const resetReturn = () => {
@@ -422,7 +468,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetCheckout}>Cancel</Button>
-            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0) < 1 || Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0) > (checkoutItem?.quantity_available ?? 1) || checkoutMutation.isPending}>
+            <Button onClick={() => checkoutMutation.mutate({})} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0) < 1 || Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0) > (checkoutItem?.quantity_available ?? 1) || checkoutMutation.isPending}>
               {checkoutMutation.isPending ? "Processing..." : "Confirm Checkout"}
             </Button>
           </DialogFooter>
@@ -481,6 +527,24 @@ export default function Index() {
             <Button variant="outline" onClick={resetReturn}>Cancel</Button>
             <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || returnMutation.isPending || Object.values(returnConditionCounts).reduce((a, b) => a + b, 0) < 1 || Object.values(returnConditionCounts).reduce((a, b) => a + b, 0) > returnMaxQty}>
               {returnMutation.isPending ? "Processing..." : "Confirm Return"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Merge Confirmation Dialog */}
+      <Dialog open={showMergeConfirm} onOpenChange={(open) => { if (!open) { setShowMergeConfirm(false); setMergeTarget(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to existing checkout?</DialogTitle>
+            <DialogDescription>
+              You already have <span className="font-semibold">{mergeTarget?.quantity ?? 0}</span> of this item checked out. Would you like to add <span className="font-semibold">{Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0)}</span> more to that checkout?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowMergeConfirm(false); setMergeTarget(null); }}>Cancel</Button>
+            <Button onClick={() => { setShowMergeConfirm(false); checkoutMutation.mutate({ forceMerge: true }); }}>
+              Yes, merge them
             </Button>
           </DialogFooter>
         </DialogContent>
