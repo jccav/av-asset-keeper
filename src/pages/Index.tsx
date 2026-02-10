@@ -30,8 +30,8 @@ const CONDITION_COLORS: Record<string, string> = {
   excellent: "bg-emerald-700 text-white",
   good: "bg-success text-success-foreground",
   fair: "bg-warning text-warning-foreground",
-  damaged: "bg-orange-600 text-white",
-  bad: "bg-destructive text-destructive-foreground",
+  bad: "bg-orange-600 text-white",
+  damaged: "bg-destructive text-destructive-foreground",
 };
 
 export default function Index() {
