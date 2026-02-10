@@ -15,8 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, Archive, RotateCcw } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import type { Json } from "@/integrations/supabase/types";
 
 type Equipment = Tables<"equipment">;
+
+const CONDITIONS = ["excellent", "good", "fair", "damaged", "bad"] as const;
+type ConditionCounts = Partial<Record<string, number>>;
 
 const CATEGORY_LABELS: Record<string, string> = {
   audio: "Audio", video: "Video", lighting: "Lighting",
@@ -29,7 +33,14 @@ export default function AdminInventory() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Equipment | null>(null);
-  const [form, setForm] = useState({ name: "", category: "audio" as string, condition: "good" as string, notes: "", is_available: true, total_quantity: 1 });
+  const [form, setForm] = useState({
+    name: "",
+    category: "audio" as string,
+    notes: "",
+    total_quantity: 1,
+    quantity_available: 1,
+    condition_counts: { good: 1 } as ConditionCounts,
+  });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["admin-equipment"],
@@ -54,21 +65,30 @@ export default function AdminInventory() {
     queryClient.invalidateQueries({ queryKey: ["admin-equipment-archived"] });
   };
 
+  const getMainCondition = (counts: ConditionCounts): string => {
+    let max = 0; let main = "good";
+    for (const [k, v] of Object.entries(counts)) { if ((v ?? 0) > max) { max = v ?? 0; main = k; } }
+    return main;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const mainCondition = getMainCondition(form.condition_counts) as Equipment["condition"];
+      const payload = {
+        name: form.name,
+        category: form.category as Equipment["category"],
+        condition: mainCondition,
+        notes: form.notes || null,
+        is_available: form.quantity_available > 0,
+        total_quantity: form.total_quantity,
+        quantity_available: form.quantity_available,
+        condition_counts: form.condition_counts as unknown as Json,
+      };
       if (editing) {
-        const { error } = await supabase.from("equipment").update({
-          name: form.name, category: form.category as Equipment["category"],
-          condition: form.condition as Equipment["condition"], notes: form.notes || null, is_available: form.is_available,
-          total_quantity: form.total_quantity, quantity_available: form.total_quantity,
-        }).eq("id", editing.id);
+        const { error } = await supabase.from("equipment").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("equipment").insert({
-          name: form.name, category: form.category as Equipment["category"],
-          condition: form.condition as Equipment["condition"], notes: form.notes || null, is_available: form.is_available,
-          total_quantity: form.total_quantity, quantity_available: form.total_quantity,
-        });
+        const { error } = await supabase.from("equipment").insert(payload);
         if (error) throw error;
       }
     },
@@ -94,8 +114,13 @@ export default function AdminInventory() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", condition: "good", notes: "", is_available: true, total_quantity: 1 }); setDialogOpen(true); };
-  const openEdit = (item: Equipment) => { setEditing(item); setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "", is_available: item.is_available, total_quantity: item.total_quantity }); setDialogOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", notes: "", total_quantity: 1, quantity_available: 1, condition_counts: { good: 1 } }); setDialogOpen(true); };
+  const openEdit = (item: Equipment) => {
+    setEditing(item);
+    const counts = (item as any).condition_counts as ConditionCounts ?? { [item.condition]: item.total_quantity };
+    setForm({ name: item.name, category: item.category, notes: item.notes || "", total_quantity: item.total_quantity, quantity_available: item.quantity_available, condition_counts: counts });
+    setDialogOpen(true);
+  };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   const filtered = equipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
@@ -140,9 +165,18 @@ export default function AdminInventory() {
                       <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
                       <TableCell>{item.quantity_available} / {item.total_quantity}</TableCell>
                       <TableCell>
-                        <Badge variant={item.condition === "excellent" ? "default" : item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
-                          {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries((item as any).condition_counts ?? {}).filter(([, v]) => (v as number) > 0).map(([k, v]) => (
+                            <Badge key={k} variant={k === "excellent" || k === "good" ? "default" : k === "fair" ? "secondary" : "destructive"} className="text-xs">
+                              {v as number} {k.charAt(0).toUpperCase() + k.slice(1)}
+                            </Badge>
+                          ))}
+                          {Object.keys((item as any).condition_counts ?? {}).length === 0 && (
+                            <Badge variant={item.condition === "excellent" || item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
+                              {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={item.quantity_available > 0 ? "default" : "secondary"}>
@@ -243,7 +277,6 @@ export default function AdminInventory() {
           </DialogHeader>
           <div className="space-y-4">
             <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Shure SM58 Microphone" /></div>
-            <div><Label>Quantity</Label><Input type="number" min={1} value={form.total_quantity} onChange={(e) => setForm({ ...form, total_quantity: Math.max(1, parseInt(e.target.value) || 1) })} /></div>
             <div>
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
@@ -251,35 +284,53 @@ export default function AdminInventory() {
                 <SelectContent>{Object.entries(CATEGORY_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Condition</Label>
-              <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="excellent">Excellent</SelectItem>
-                  <SelectItem value="good">Good</SelectItem>
-                  <SelectItem value="fair">Fair</SelectItem>
-                  <SelectItem value="damaged">Damaged</SelectItem>
-                  <SelectItem value="bad">Bad</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Total Quantity</Label>
+                <Input type="number" min={1} value={form.total_quantity} onChange={(e) => {
+                  const total = Math.max(1, parseInt(e.target.value) || 1);
+                  setForm({ ...form, total_quantity: total, quantity_available: Math.min(form.quantity_available, total) });
+                }} />
+              </div>
+              <div>
+                <Label>Available</Label>
+                <Input type="number" min={0} max={form.total_quantity} value={form.quantity_available} onChange={(e) => {
+                  setForm({ ...form, quantity_available: Math.max(0, Math.min(form.total_quantity, parseInt(e.target.value) || 0)) });
+                }} />
+              </div>
             </div>
             <div>
-                <Label>Availability Status</Label>
-                <Select value={form.is_available ? "available" : "checked_out"} onValueChange={(v) => setForm({ ...form, is_available: v === "available" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="checked_out">Checked Out</SelectItem>
-                  </SelectContent>
-                </Select>
+              <Label className="mb-2 block">Condition Breakdown</Label>
+              <div className="space-y-2 rounded-md border p-3">
+                {CONDITIONS.map((c) => (
+                  <div key={c} className="flex items-center gap-3">
+                    <span className="w-24 text-sm capitalize">{c}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-8 w-20"
+                      value={form.condition_counts[c] ?? 0}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        setForm({ ...form, condition_counts: { ...form.condition_counts, [c]: val } });
+                      }}
+                    />
+                  </div>
+                ))}
+                {(() => {
+                  const sum = Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0;
+                  return sum !== form.total_quantity ? (
+                    <p className="text-xs text-destructive mt-1">Condition counts ({sum}) must equal total quantity ({form.total_quantity})</p>
+                  ) : null;
+                })()}
               </div>
+            </div>
             
             <div><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Serial number, notes..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!form.name || saveMutation.isPending}>
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.name || saveMutation.isPending || (Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.total_quantity}>
               {saveMutation.isPending ? "Saving..." : editing ? "Update" : "Add"}
             </Button>
           </DialogFooter>
