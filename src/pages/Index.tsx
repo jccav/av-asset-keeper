@@ -51,7 +51,7 @@ export default function Index() {
   const [teamName, setTeamName] = useState("");
   const [expectedReturn, setExpectedReturn] = useState("");
   const [checkoutNotes, setCheckoutNotes] = useState("");
-  const [returnCondition, setReturnCondition] = useState<string>("good");
+  const [returnConditionCounts, setReturnConditionCounts] = useState<Record<string, number>>({ good: 1 });
   const [returnNotes, setReturnNotes] = useState("");
 
   const { data: equipment = [], isLoading } = useQuery({
@@ -122,18 +122,21 @@ export default function Index() {
       if (returnPin.trim() !== log.pin) {
         throw new Error("Incorrect PIN. Please enter the 4-digit PIN used during checkout.");
       }
+      const totalReturning = Object.values(returnConditionCounts).reduce((a, b) => a + b, 0);
       const remainingBefore = log.quantity - (log.quantity_returned ?? 0);
-      if (returnQuantity > remainingBefore) {
-        throw new Error(`Only ${remainingBefore} items are still checked out.`);
+      if (totalReturning > remainingBefore || totalReturning < 1) {
+        throw new Error(`You must return between 1 and ${remainingBefore} items.`);
       }
-      const newQtyReturned = (log.quantity_returned ?? 0) + returnQuantity;
+      const newQtyReturned = (log.quantity_returned ?? 0) + totalReturning;
       const fullyReturned = newQtyReturned >= log.quantity;
+      // Determine main condition for the log entry
+      const mainReturnCondition = Object.entries(returnConditionCounts).reduce((a, b) => b[1] > a[1] ? b : a, ["good", 0])[0];
       const { error: logError } = await supabase
         .from("checkout_log")
         .update({
           quantity_returned: newQtyReturned,
           ...(fullyReturned ? { return_date: new Date().toISOString() } : {}),
-          condition_on_return: returnCondition as Equipment["condition"],
+          condition_on_return: mainReturnCondition as Equipment["condition"],
           notes: returnNotes || null,
           returned_by: borrowerName || log.borrower_name,
         })
@@ -141,9 +144,12 @@ export default function Index() {
       if (logError) throw logError;
       // Restore quantity and update condition_counts
       const { data: eq } = await supabase.from("equipment").select("quantity_available, total_quantity, condition_counts").eq("id", returnItem.id).single();
-      const restored = Math.min((eq?.quantity_available ?? 0) + returnQuantity, eq?.total_quantity ?? returnQuantity);
+      const restored = Math.min((eq?.quantity_available ?? 0) + totalReturning, eq?.total_quantity ?? totalReturning);
       const counts = (eq?.condition_counts ?? {}) as Record<string, number>;
-      counts[returnCondition] = (counts[returnCondition] ?? 0) + returnQuantity;
+      // Add each condition's returned quantity
+      for (const [cond, qty] of Object.entries(returnConditionCounts)) {
+        if (qty > 0) counts[cond] = (counts[cond] ?? 0) + qty;
+      }
       const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
       const { error: eqError } = await supabase
         .from("equipment")
@@ -182,7 +188,7 @@ export default function Index() {
     setReturnQuantity(1);
     setReturnMaxQty(1);
     setTeamName("");
-    setReturnCondition("good");
+    setReturnConditionCounts({ good: 1 });
     setReturnNotes("");
   };
 
@@ -200,6 +206,7 @@ export default function Index() {
     const remaining = (log?.quantity ?? 1) - (log?.quantity_returned ?? 0);
     setReturnQuantity(remaining);
     setReturnMaxQty(remaining);
+    setReturnConditionCounts({ good: remaining });
   };
 
   const filtered = equipment.filter((e) => {
@@ -378,24 +385,34 @@ export default function Index() {
               <Label htmlFor="return-pin">4-Digit PIN *</Label>
               <Input id="return-pin" value={returnPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setReturnPin(v); }} placeholder="Enter your PIN" inputMode="numeric" maxLength={4} />
             </div>
-            {returnMaxQty > 1 && (
-              <div>
-                <Label htmlFor="return-qty">Quantity to Return * <span className="text-xs text-muted-foreground">(max {returnMaxQty})</span></Label>
-                <Input id="return-qty" type="number" min={1} max={returnMaxQty} value={returnQuantity} onChange={(e) => setReturnQuantity(Math.max(1, Math.min(returnMaxQty, parseInt(e.target.value) || 1)))} />
-              </div>
-            )}
             <div>
-              <Label>Condition on Return</Label>
-              <Select value={returnCondition} onValueChange={setReturnCondition}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="excellent">Excellent</SelectItem>
-                  <SelectItem value="good">Good</SelectItem>
-                  <SelectItem value="fair">Fair</SelectItem>
-                  <SelectItem value="damaged">Damaged</SelectItem>
-                  <SelectItem value="bad">Bad</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-sm text-muted-foreground mb-1">Returning up to <span className="font-semibold">{returnMaxQty}</span> item{returnMaxQty > 1 ? "s" : ""}. Specify condition for each:</p>
+            </div>
+            <div>
+              <Label className="mb-2 block">Condition of Returned Items</Label>
+              <div className="space-y-2 rounded-md border p-3">
+                {(["excellent", "good", "fair", "damaged", "bad"] as const).map((c) => (
+                  <div key={c} className="flex items-center gap-3">
+                    <span className="w-24 text-sm capitalize">{c}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-8 w-20"
+                      value={returnConditionCounts[c] ?? 0}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        setReturnConditionCounts({ ...returnConditionCounts, [c]: val });
+                      }}
+                    />
+                  </div>
+                ))}
+                {(() => {
+                  const sum = Object.values(returnConditionCounts).reduce((a, b) => a + b, 0);
+                  if (sum < 1) return <p className="text-xs text-destructive mt-1">Enter at least 1 item to return</p>;
+                  if (sum > returnMaxQty) return <p className="text-xs text-destructive mt-1">Total ({sum}) exceeds items checked out ({returnMaxQty})</p>;
+                  return <p className="text-xs text-muted-foreground mt-1">Returning {sum} of {returnMaxQty} item{returnMaxQty > 1 ? "s" : ""}</p>;
+                })()}
+              </div>
             </div>
             <div>
               <Label htmlFor="return-notes">Notes</Label>
@@ -404,7 +421,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetReturn}>Cancel</Button>
-            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || returnMutation.isPending}>
+            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || returnMutation.isPending || Object.values(returnConditionCounts).reduce((a, b) => a + b, 0) < 1 || Object.values(returnConditionCounts).reduce((a, b) => a + b, 0) > returnMaxQty}>
               {returnMutation.isPending ? "Processing..." : "Confirm Return"}
             </Button>
           </DialogFooter>
