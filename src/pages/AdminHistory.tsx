@@ -85,6 +85,11 @@ export default function AdminHistory() {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    {(!log.return_date && log.equipment) ? (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-40 cursor-not-allowed" disabled title="Cannot delete while item is checked out">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
@@ -102,6 +107,7 @@ export default function AdminHistory() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
