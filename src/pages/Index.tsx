@@ -518,7 +518,8 @@ export default function Index() {
                       className="h-8 w-20"
                       value={returnConditionCounts[c] ?? 0}
                       onChange={(e) => {
-                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        let val = Math.max(0, parseInt(e.target.value) || 0);
+                        if (val > returnMaxQty) val = 0;
                         setReturnConditionCounts({ ...returnConditionCounts, [c]: val });
                       }}
                     />
