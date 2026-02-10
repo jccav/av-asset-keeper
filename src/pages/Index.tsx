@@ -92,6 +92,7 @@ export default function Index() {
         notes: checkoutNotes || null,
         pin: checkoutPin,
         quantity: checkoutTotal,
+        checkout_condition_counts: checkoutConditionCounts,
       });
       if (logError) throw logError;
       // Subtract from condition_counts
@@ -152,7 +153,7 @@ export default function Index() {
           quantity_returned: newQtyReturned,
           ...(fullyReturned ? { return_date: new Date().toISOString() } : {}),
           condition_on_return: mainReturnCondition as Equipment["condition"],
-          notes: returnNotes || null,
+          return_notes: returnNotes || null,
           returned_by: borrowerName || log.borrower_name,
         })
         .eq("id", log.id);
@@ -212,7 +213,7 @@ export default function Index() {
     setReturnItem(item);
     const { data } = await supabase
       .from("checkout_log")
-      .select("borrower_name, team_name, quantity, quantity_returned")
+      .select("borrower_name, team_name, quantity, quantity_returned, checkout_condition_counts")
       .eq("equipment_id", item.id)
       .is("return_date", null)
       .order("checkout_date", { ascending: false });
@@ -222,7 +223,20 @@ export default function Index() {
     const remaining = (log?.quantity ?? 1) - (log?.quantity_returned ?? 0);
     setReturnQuantity(remaining);
     setReturnMaxQty(remaining);
-    setReturnConditionCounts({ good: remaining });
+    // Default return conditions to what was checked out
+    const checkoutCounts = (log?.checkout_condition_counts ?? {}) as Record<string, number>;
+    const totalCheckoutCounts = Object.values(checkoutCounts).reduce((a, b) => a + b, 0);
+    if (totalCheckoutCounts > 0) {
+      // Scale proportionally if partial return
+      if (totalCheckoutCounts === remaining) {
+        setReturnConditionCounts(checkoutCounts);
+      } else {
+        // Just use checkout counts as-is, user can adjust
+        setReturnConditionCounts(checkoutCounts);
+      }
+    } else {
+      setReturnConditionCounts({ good: remaining });
+    }
   };
 
   const filtered = equipment.filter((e) => {
