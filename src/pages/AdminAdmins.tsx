@@ -21,6 +21,7 @@ export default function AdminAdmins() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitePassword, setInvitePassword] = useState("");
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
 
   const { data: admins = [] } = useQuery({
     queryKey: ["admin-list"],
@@ -146,7 +147,7 @@ export default function AdminAdmins() {
                           <Button variant="ghost" size="sm" className="gap-1" onClick={() => setTransferTarget(a.user_id)}>
                             <ArrowRightLeft className="h-3 w-3" /> Transfer Master
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeMutation.mutate(a.user_id)}>
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setRemoveTarget(a.user_id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -200,6 +201,22 @@ export default function AdminAdmins() {
             <Button variant="outline" onClick={() => setTransferTarget(null)}>Cancel</Button>
             <Button variant="destructive" onClick={() => transferTarget && transferMutation.mutate(transferTarget)} disabled={transferMutation.isPending}>
               {transferMutation.isPending ? "Transferring..." : "Confirm Transfer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Confirmation */}
+      <Dialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke Admin Access</DialogTitle>
+            <DialogDescription>Are you sure you want to revoke this user's admin access? They will no longer be able to manage inventory or view admin pages.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { if (removeTarget) { removeMutation.mutate(removeTarget); setRemoveTarget(null); } }} disabled={removeMutation.isPending}>
+              {removeMutation.isPending ? "Removing..." : "Yes, Revoke Access"}
             </Button>
           </DialogFooter>
         </DialogContent>
