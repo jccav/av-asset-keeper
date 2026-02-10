@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Package, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import jccLogo from "@/assets/jcc-logo.png";
 
 export default function AdminLogin() {
   const { signIn, role, user } = useAuth();
@@ -42,10 +43,10 @@ export default function AdminLogin() {
         </Link>
         <Card>
           <CardHeader className="text-center">
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <Package className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-2">
+              <img src={jccLogo} alt="JCC Logo" className="h-16 w-16 object-contain mx-auto" />
             </div>
-            <CardTitle className="text-xl">Admin Login</CardTitle>
+            <CardTitle className="text-xl">JCC AV Tracker — Admin Login</CardTitle>
             <CardDescription>Sign in with your admin credentials. Access is invite-only.</CardDescription>
           </CardHeader>
           <CardContent>

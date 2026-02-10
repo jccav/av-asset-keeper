@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, ArrowRightLeft, Settings } from "lucide-react";
+import { Search, ArrowRightLeft, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
+import jccLogo from "@/assets/jcc-logo.png";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Equipment = Tables<"equipment">;
@@ -221,8 +222,8 @@ export default function Index() {
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <Package className="h-7 w-7 text-primary" />
-            <h1 className="text-xl font-bold tracking-tight">AV Equipment Tracker</h1>
+            <img src={jccLogo} alt="JCC Logo" className="h-9 w-9 object-contain" />
+            <h1 className="text-xl font-bold tracking-tight">JCC AV Tracker</h1>
           </div>
           <Link to="/admin">
             <Button variant="ghost" size="sm" className="gap-2">
@@ -270,7 +271,7 @@ export default function Index() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-20 text-center text-muted-foreground">
-            <Package className="mx-auto mb-4 h-12 w-12 opacity-40" />
+            <img src={jccLogo} alt="JCC Logo" className="mx-auto mb-4 h-12 w-12 opacity-40" />
             <p className="text-lg">No equipment found</p>
           </div>
         ) : (
