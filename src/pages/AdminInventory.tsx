@@ -4,14 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, Archive } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Archive, RotateCcw } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Equipment = Tables<"equipment">;
@@ -38,74 +39,64 @@ export default function AdminInventory() {
     },
   });
 
+  const { data: archivedEquipment = [] } = useQuery({
+    queryKey: ["admin-equipment-archived"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipment").select("*").eq("is_retired", true).order("name");
+      if (error) throw error;
+      return data as Equipment[];
+    },
+  });
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-equipment"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-equipment-archived"] });
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (editing) {
         const { error } = await supabase.from("equipment").update({
-          name: form.name,
-          category: form.category as Equipment["category"],
-          condition: form.condition as Equipment["condition"],
-          notes: form.notes || null,
-          is_available: form.is_available,
+          name: form.name, category: form.category as Equipment["category"],
+          condition: form.condition as Equipment["condition"], notes: form.notes || null, is_available: form.is_available,
         }).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("equipment").insert({
-          name: form.name,
-          category: form.category as Equipment["category"],
-          condition: form.condition as Equipment["condition"],
-          notes: form.notes || null,
+          name: form.name, category: form.category as Equipment["category"],
+          condition: form.condition as Equipment["condition"], notes: form.notes || null,
         });
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-equipment"] });
-      toast({ title: editing ? "Updated" : "Added", description: `${form.name} has been ${editing ? "updated" : "added"}.` });
-      closeDialog();
-    },
+    onSuccess: () => { invalidateAll(); toast({ title: editing ? "Updated" : "Added", description: `${form.name} has been ${editing ? "updated" : "added"}.` }); closeDialog(); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("equipment").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-equipment"] });
-      toast({ title: "Deleted" });
-    },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { invalidateAll(); toast({ title: "Deleted" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const retireMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("equipment").update({ is_retired: true }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-equipment"] });
-      toast({ title: "Retired", description: "Item marked as out of service." });
-    },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").update({ is_retired: true }).eq("id", id); if (error) throw error; },
+    onSuccess: () => { invalidateAll(); toast({ title: "Archived", description: "Item moved to archive." }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openAdd = () => {
-    setEditing(null);
-    setForm({ name: "", category: "audio", condition: "good", notes: "", is_available: true });
-    setDialogOpen(true);
-  };
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").update({ is_retired: false }).eq("id", id); if (error) throw error; },
+    onSuccess: () => { invalidateAll(); toast({ title: "Restored", description: "Item restored to active inventory." }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
 
-  const openEdit = (item: Equipment) => {
-    setEditing(item);
-    setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "", is_available: item.is_available });
-    setDialogOpen(true);
-  };
-
+  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", condition: "good", notes: "", is_available: true }); setDialogOpen(true); };
+  const openEdit = (item: Equipment) => { setEditing(item); setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "", is_available: item.is_available }); setDialogOpen(true); };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   const filtered = equipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredArchived = archivedEquipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div>
@@ -119,49 +110,97 @@ export default function AdminInventory() {
         <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Condition</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
-                  <TableCell>
-                    <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
-                      {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.is_available ? "default" : "secondary"}>
-                      {item.is_available ? "Available" : "Checked Out"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => retireMutation.mutate(item.id)}><Archive className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(item.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No equipment found</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="active">
+        <TabsList className="mb-4">
+          <TabsTrigger value="active">Active ({equipment.length})</TabsTrigger>
+          <TabsTrigger value="archived">Archived ({archivedEquipment.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
+                      <TableCell>
+                        <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
+                          {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={item.is_available ? "default" : "secondary"}>
+                          {item.is_available ? "Available" : "Checked Out"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => retireMutation.mutate(item.id)}><Archive className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(item.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filtered.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No equipment found</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="archived">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredArchived.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
+                      <TableCell>
+                        <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
+                          {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => restoreMutation.mutate(item.id)} title="Restore"><RotateCcw className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(item.id)} className="text-destructive" title="Delete permanently"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredArchived.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No archived equipment</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
@@ -170,19 +209,12 @@ export default function AdminInventory() {
             <DialogDescription>{editing ? "Update equipment details." : "Add a new piece of equipment to inventory."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Name *</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Shure SM58 Microphone" />
-            </div>
+            <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Shure SM58 Microphone" /></div>
             <div>
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{Object.entries(CATEGORY_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div>
@@ -208,10 +240,7 @@ export default function AdminInventory() {
                 </Select>
               </div>
             )}
-            <div>
-              <Label>Notes</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Serial number, notes..." />
-            </div>
+            <div><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Serial number, notes..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
