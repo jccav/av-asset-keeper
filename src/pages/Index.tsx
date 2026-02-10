@@ -38,6 +38,8 @@ export default function Index() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [checkoutItem, setCheckoutItem] = useState<Equipment | null>(null);
   const [returnItem, setReturnItem] = useState<Equipment | null>(null);
+  const [returnBorrower, setReturnBorrower] = useState(""); // the original borrower from checkout
+  const [returnName, setReturnName] = useState(""); // name entered by the person returning
   const [borrowerName, setBorrowerName] = useState("");
   const [teamName, setTeamName] = useState("");
   const [expectedReturn, setExpectedReturn] = useState("");
@@ -88,7 +90,7 @@ export default function Index() {
       if (!returnItem) return;
       const { data: log, error: findError } = await supabase
         .from("checkout_log")
-        .select("id")
+        .select("id, borrower_name")
         .eq("equipment_id", returnItem.id)
         .is("return_date", null)
         .order("checkout_date", { ascending: false })
@@ -96,6 +98,9 @@ export default function Index() {
         .maybeSingle();
       if (findError) throw findError;
       if (!log) throw new Error("No active checkout found.");
+      if (returnName.trim().toLowerCase() !== log.borrower_name.trim().toLowerCase()) {
+        throw new Error(`This item was checked out by "${log.borrower_name}". Only the original borrower can return it.`);
+      }
       const { error: logError } = await supabase
         .from("checkout_log")
         .update({
@@ -129,8 +134,24 @@ export default function Index() {
 
   const resetReturn = () => {
     setReturnItem(null);
+    setReturnBorrower("");
+    setReturnName("");
     setReturnCondition("good");
     setReturnNotes("");
+  };
+
+  const openReturn = async (item: Equipment) => {
+    setReturnItem(item);
+    // Fetch who checked it out
+    const { data } = await supabase
+      .from("checkout_log")
+      .select("borrower_name")
+      .eq("equipment_id", item.id)
+      .is("return_date", null)
+      .order("checkout_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setReturnBorrower(data?.borrower_name ?? "Unknown");
   };
 
   const filtered = equipment.filter((e) => {
@@ -227,7 +248,7 @@ export default function Index() {
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
                     ) : (
-                      <Button variant="outline" className="w-full gap-2" onClick={() => setReturnItem(item)}>
+                      <Button variant="outline" className="w-full gap-2" onClick={() => openReturn(item)}>
                         <ArrowRightLeft className="h-4 w-4" /> Return
                       </Button>
                     )}
@@ -278,9 +299,15 @@ export default function Index() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Return: {returnItem?.name}</DialogTitle>
-            <DialogDescription>Confirm the return of this equipment.</DialogDescription>
+            <DialogDescription>
+              Checked out by <span className="font-semibold">{returnBorrower}</span>. Enter your name to verify identity.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="return-name">Your Name *</Label>
+              <Input id="return-name" value={returnName} onChange={(e) => setReturnName(e.target.value)} placeholder="Enter the name used at checkout" />
+            </div>
             <div>
               <Label>Condition on Return</Label>
               <Select value={returnCondition} onValueChange={setReturnCondition}>
@@ -299,7 +326,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetReturn}>Cancel</Button>
-            <Button onClick={() => returnMutation.mutate()} disabled={returnMutation.isPending}>
+            <Button onClick={() => returnMutation.mutate()} disabled={!returnName.trim() || returnMutation.isPending}>
               {returnMutation.isPending ? "Processing..." : "Confirm Return"}
             </Button>
           </DialogFooter>
