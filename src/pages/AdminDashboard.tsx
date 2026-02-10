@@ -1,11 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, CheckCircle, AlertTriangle, ArrowRightLeft, Archive } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, CheckCircle, AlertTriangle, ArrowRightLeft, Archive, Undo2 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment-all"],
     queryFn: async () => {
@@ -35,6 +40,27 @@ export default function AdminDashboard() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const forceReturnMutation = useMutation({
+    mutationFn: async (checkout: any) => {
+      const { error: logError } = await supabase
+        .from("checkout_log")
+        .update({ return_date: new Date().toISOString() })
+        .eq("id", checkout.id);
+      if (logError) throw logError;
+      const { error: eqError } = await supabase
+        .from("equipment")
+        .update({ is_available: true })
+        .eq("id", checkout.equipment_id);
+      if (eqError) throw eqError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["active-checkouts"] });
+      queryClient.invalidateQueries({ queryKey: ["equipment-all"] });
+      toast({ title: "Force returned", description: "Item has been returned by admin." });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const total = equipment.length;
@@ -81,16 +107,27 @@ export default function AdminDashboard() {
                   <div>
                     <p className="font-medium">{c.equipment?.name ?? "Unknown"}</p>
                     <p className="text-sm text-muted-foreground">
-                      {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""}
+                      {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin || "—"}</code>
                     </p>
                   </div>
-                  <div className="text-right text-sm">
-                    <p className="text-muted-foreground">Since {format(new Date(c.checkout_date), "MMM d, yyyy")}</p>
-                    {c.expected_return && (
-                      <Badge variant="outline" className="mt-1">
-                        Due {format(new Date(c.expected_return), "MMM d")}
-                      </Badge>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <div className="text-right text-sm">
+                      <p className="text-muted-foreground">Since {format(new Date(c.checkout_date), "MMM d, yyyy")}</p>
+                      {c.expected_return && (
+                        <Badge variant="outline" className="mt-1">
+                          Due {format(new Date(c.expected_return), "MMM d")}
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => forceReturnMutation.mutate(c)}
+                      disabled={forceReturnMutation.isPending}
+                    >
+                      <Undo2 className="h-3 w-3" /> Force Return
+                    </Button>
                   </div>
                 </div>
               ))}
