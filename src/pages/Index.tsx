@@ -443,7 +443,8 @@ export default function Index() {
                       className="h-8 w-20"
                       value={checkoutConditionCounts[c] ?? 0}
                       onChange={(e) => {
-                        const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), availForCondition);
+                        let val = Math.max(0, parseInt(e.target.value) || 0);
+                        if (val > availForCondition) val = 0;
                         setCheckoutConditionCounts({ ...checkoutConditionCounts, [c]: val });
                       }}
                     />
