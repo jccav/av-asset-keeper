@@ -46,7 +46,7 @@ export default function AdminDashboard() {
     mutationFn: async (checkout: any) => {
       const { error: logError } = await supabase
         .from("checkout_log")
-        .update({ return_date: new Date().toISOString() })
+        .update({ return_date: new Date().toISOString(), returned_by: "Admin (force return)" })
         .eq("id", checkout.id);
       if (logError) throw logError;
       const { error: eqError } = await supabase
