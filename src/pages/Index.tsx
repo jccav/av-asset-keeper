@@ -38,9 +38,10 @@ export default function Index() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [checkoutItem, setCheckoutItem] = useState<Equipment | null>(null);
   const [returnItem, setReturnItem] = useState<Equipment | null>(null);
-  const [returnBorrower, setReturnBorrower] = useState(""); // the original borrower from checkout
-  const [returnName, setReturnName] = useState(""); // name entered by the person returning
+  const [returnBorrower, setReturnBorrower] = useState("");
+  const [returnPin, setReturnPin] = useState("");
   const [borrowerName, setBorrowerName] = useState("");
+  const [checkoutPin, setCheckoutPin] = useState("");
   const [teamName, setTeamName] = useState("");
   const [expectedReturn, setExpectedReturn] = useState("");
   const [checkoutNotes, setCheckoutNotes] = useState("");
@@ -69,6 +70,7 @@ export default function Index() {
         team_name: teamName || null,
         expected_return: expectedReturn || null,
         notes: checkoutNotes || null,
+        pin: checkoutPin,
       });
       if (logError) throw logError;
       const { error: eqError } = await supabase
@@ -90,7 +92,7 @@ export default function Index() {
       if (!returnItem) return;
       const { data: log, error: findError } = await supabase
         .from("checkout_log")
-        .select("id, borrower_name")
+        .select("id, borrower_name, pin")
         .eq("equipment_id", returnItem.id)
         .is("return_date", null)
         .order("checkout_date", { ascending: false })
@@ -98,8 +100,8 @@ export default function Index() {
         .maybeSingle();
       if (findError) throw findError;
       if (!log) throw new Error("No active checkout found.");
-      if (returnName.trim().toLowerCase() !== log.borrower_name.trim().toLowerCase()) {
-        throw new Error(`This item was checked out by "${log.borrower_name}". Only the original borrower can return it.`);
+      if (returnPin.trim() !== log.pin) {
+        throw new Error("Incorrect PIN. Please enter the 4-digit PIN used during checkout.");
       }
       const { error: logError } = await supabase
         .from("checkout_log")
@@ -127,6 +129,7 @@ export default function Index() {
   const resetCheckout = () => {
     setCheckoutItem(null);
     setBorrowerName("");
+    setCheckoutPin("");
     setTeamName("");
     setExpectedReturn("");
     setCheckoutNotes("");
@@ -135,7 +138,7 @@ export default function Index() {
   const resetReturn = () => {
     setReturnItem(null);
     setReturnBorrower("");
-    setReturnName("");
+    setReturnPin("");
     setReturnCondition("good");
     setReturnNotes("");
   };
@@ -273,6 +276,10 @@ export default function Index() {
               <Input id="borrower" value={borrowerName} onChange={(e) => setBorrowerName(e.target.value)} placeholder="John Doe" />
             </div>
             <div>
+              <Label htmlFor="pin">4-Digit PIN * <span className="text-xs text-muted-foreground">(you'll need this to return)</span></Label>
+              <Input id="pin" value={checkoutPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setCheckoutPin(v); }} placeholder="e.g. 1234" inputMode="numeric" maxLength={4} />
+            </div>
+            <div>
               <Label htmlFor="team">Team Name</Label>
               <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Production Team" />
             </div>
@@ -287,7 +294,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetCheckout}>Cancel</Button>
-            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || checkoutMutation.isPending}>
+            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || checkoutPin.length !== 4 || checkoutMutation.isPending}>
               {checkoutMutation.isPending ? "Processing..." : "Confirm Checkout"}
             </Button>
           </DialogFooter>
@@ -300,13 +307,13 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>Return: {returnItem?.name}</DialogTitle>
             <DialogDescription>
-              Checked out by <span className="font-semibold">{returnBorrower}</span>. Enter your name to verify identity.
+              Checked out by <span className="font-semibold">{returnBorrower}</span>. Enter your 4-digit PIN to return.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="return-name">Your Name *</Label>
-              <Input id="return-name" value={returnName} onChange={(e) => setReturnName(e.target.value)} placeholder="Enter the name used at checkout" />
+              <Label htmlFor="return-pin">4-Digit PIN *</Label>
+              <Input id="return-pin" value={returnPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setReturnPin(v); }} placeholder="Enter your PIN" inputMode="numeric" maxLength={4} />
             </div>
             <div>
               <Label>Condition on Return</Label>
@@ -326,7 +333,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetReturn}>Cancel</Button>
-            <Button onClick={() => returnMutation.mutate()} disabled={!returnName.trim() || returnMutation.isPending}>
+            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || returnMutation.isPending}>
               {returnMutation.isPending ? "Processing..." : "Confirm Return"}
             </Button>
           </DialogFooter>
