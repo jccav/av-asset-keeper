@@ -52,6 +52,7 @@ export default function Index() {
   const [teamName, setTeamName] = useState("");
   const [expectedReturn, setExpectedReturn] = useState("");
   const [checkoutNotes, setCheckoutNotes] = useState("");
+  const [checkoutConditionCounts, setCheckoutConditionCounts] = useState<Record<string, number>>({ good: 1 });
   const [returnConditionCounts, setReturnConditionCounts] = useState<Record<string, number>>({ good: 1 });
   const [returnNotes, setReturnNotes] = useState("");
 
@@ -71,15 +72,17 @@ export default function Index() {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       if (!checkoutItem) return;
+      const checkoutTotal = Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0);
+      if (checkoutTotal < 1) throw new Error("Specify at least 1 item to check out.");
       // Validate quantity available
       const { data: current, error: fetchErr } = await supabase
         .from("equipment")
-        .select("quantity_available")
+        .select("quantity_available, condition_counts")
         .eq("id", checkoutItem.id)
         .single();
       if (fetchErr) throw fetchErr;
-      if (!current || current.quantity_available < checkoutQty) {
-        throw new Error(`Only ${current?.quantity_available ?? 0} available. You requested ${checkoutQty}.`);
+      if (!current || current.quantity_available < checkoutTotal) {
+        throw new Error(`Only ${current?.quantity_available ?? 0} available. You requested ${checkoutTotal}.`);
       }
       const { error: logError } = await supabase.from("checkout_log").insert({
         equipment_id: checkoutItem.id,
@@ -88,13 +91,24 @@ export default function Index() {
         expected_return: expectedReturn || null,
         notes: checkoutNotes || null,
         pin: checkoutPin,
-        quantity: checkoutQty,
+        quantity: checkoutTotal,
       });
       if (logError) throw logError;
-      const newAvailable = current.quantity_available - checkoutQty;
+      // Subtract from condition_counts
+      const counts = (current.condition_counts ?? {}) as Record<string, number>;
+      for (const [cond, qty] of Object.entries(checkoutConditionCounts)) {
+        if (qty > 0) counts[cond] = Math.max(0, (counts[cond] ?? 0) - qty);
+      }
+      const newAvailable = current.quantity_available - checkoutTotal;
+      const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
       const { error: eqError } = await supabase
         .from("equipment")
-        .update({ quantity_available: newAvailable, is_available: newAvailable > 0 })
+        .update({
+          quantity_available: newAvailable,
+          is_available: newAvailable > 0,
+          condition: mainCondition as Equipment["condition"],
+          condition_counts: counts,
+        })
         .eq("id", checkoutItem.id);
       if (eqError) throw eqError;
     },
@@ -179,6 +193,7 @@ export default function Index() {
     setTeamName("");
     setExpectedReturn("");
     setCheckoutNotes("");
+    setCheckoutConditionCounts({ good: 1 });
   };
 
   const resetReturn = () => {
@@ -309,7 +324,7 @@ export default function Index() {
                   )}
                   <div className="mt-2 flex gap-2">
                     {item.quantity_available > 0 ? (
-                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); setCheckoutQty(1); }}>
+                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); setCheckoutQty(1); setCheckoutConditionCounts({ good: 1 }); }}>
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
                     ) : null}
@@ -351,8 +366,31 @@ export default function Index() {
               <Input id="pin" value={checkoutPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setCheckoutPin(v); }} placeholder="e.g. 1234" inputMode="numeric" maxLength={4} />
             </div>
             <div>
-              <Label htmlFor="checkout-qty">Quantity * <span className="text-xs text-muted-foreground">(max {checkoutItem?.quantity_available ?? 1})</span></Label>
-              <Input id="checkout-qty" type="number" min={1} max={checkoutItem?.quantity_available ?? 1} value={checkoutQty} onChange={(e) => setCheckoutQty(Math.max(1, Math.min(checkoutItem?.quantity_available ?? 1, parseInt(e.target.value) || 1)))} />
+              <Label className="mb-2 block">Condition of Items Being Checked Out</Label>
+              <div className="space-y-2 rounded-md border p-3">
+                {(["excellent", "good", "fair", "damaged", "bad"] as const).map((c) => (
+                  <div key={c} className="flex items-center gap-3">
+                    <span className="w-24 text-sm capitalize">{c}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-8 w-20"
+                      value={checkoutConditionCounts[c] ?? 0}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        setCheckoutConditionCounts({ ...checkoutConditionCounts, [c]: val });
+                      }}
+                    />
+                  </div>
+                ))}
+                {(() => {
+                  const sum = Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0);
+                  const max = checkoutItem?.quantity_available ?? 1;
+                  if (sum < 1) return <p className="text-xs text-destructive mt-1">Enter at least 1 item</p>;
+                  if (sum > max) return <p className="text-xs text-destructive mt-1">Total ({sum}) exceeds available ({max})</p>;
+                  return <p className="text-xs text-muted-foreground mt-1">Checking out {sum} item{sum !== 1 ? "s" : ""}</p>;
+                })()}
+              </div>
             </div>
             <div>
               <Label htmlFor="return-date">Expected Return Date</Label>
@@ -365,7 +403,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetCheckout}>Cancel</Button>
-            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || checkoutQty < 1 || checkoutMutation.isPending}>
+            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0) < 1 || Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0) > (checkoutItem?.quantity_available ?? 1) || checkoutMutation.isPending}>
               {checkoutMutation.isPending ? "Processing..." : "Confirm Checkout"}
             </Button>
           </DialogFooter>
