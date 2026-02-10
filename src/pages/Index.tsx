@@ -368,7 +368,7 @@ export default function Index() {
             <div>
               <Label className="mb-2 block">Condition of Items Being Checked Out</Label>
               <div className="space-y-2 rounded-md border p-3">
-                {(["excellent", "good", "fair", "damaged", "bad"] as const).map((c) => (
+                {(["excellent", "good", "fair", "bad", "damaged"] as const).map((c) => (
                   <div key={c} className="flex items-center gap-3">
                     <span className="w-24 text-sm capitalize">{c}</span>
                     <Input
@@ -430,7 +430,7 @@ export default function Index() {
             <div>
               <Label className="mb-2 block">Condition of Returned Items</Label>
               <div className="space-y-2 rounded-md border p-3">
-                {(["excellent", "good", "fair", "damaged", "bad"] as const).map((c) => (
+                {(["excellent", "good", "fair", "bad", "damaged"] as const).map((c) => (
                   <div key={c} className="flex items-center gap-3">
                     <span className="w-24 text-sm capitalize">{c}</span>
                     <Input

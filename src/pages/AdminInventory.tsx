@@ -19,7 +19,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 type Equipment = Tables<"equipment">;
 
-const CONDITIONS = ["excellent", "good", "fair", "damaged", "bad"] as const;
+const CONDITIONS = ["excellent", "good", "fair", "bad", "damaged"] as const;
 type ConditionCounts = Partial<Record<string, number>>;
 
 const CATEGORY_LABELS: Record<string, string> = {
