@@ -138,7 +138,7 @@ export default function AdminInventory() {
                   <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
                   <TableCell>
                     <Badge variant={item.condition === "good" ? "default" : item.condition === "fair" ? "secondary" : "destructive"}>
-                      {item.condition}
+                      {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
                     </Badge>
                   </TableCell>
                   <TableCell>
