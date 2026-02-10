@@ -269,17 +269,27 @@ export default function Index() {
     const remaining = (log?.quantity ?? 1) - (log?.quantity_returned ?? 0);
     setReturnQuantity(remaining);
     setReturnMaxQty(remaining);
-    // Default return conditions to what was checked out
+    // Default return conditions to remaining (scale down from checkout counts)
     const checkoutCounts = (log?.checkout_condition_counts ?? {}) as Record<string, number>;
     const totalCheckoutCounts = Object.values(checkoutCounts).reduce((a, b) => a + b, 0);
-    if (totalCheckoutCounts > 0) {
-      // Scale proportionally if partial return
-      if (totalCheckoutCounts === remaining) {
-        setReturnConditionCounts(checkoutCounts);
-      } else {
-        // Just use checkout counts as-is, user can adjust
-        setReturnConditionCounts(checkoutCounts);
+    if (totalCheckoutCounts > 0 && totalCheckoutCounts === remaining) {
+      setReturnConditionCounts({ ...checkoutCounts });
+    } else if (totalCheckoutCounts > 0 && remaining < totalCheckoutCounts) {
+      // Scale proportionally to remaining
+      const scaled: Record<string, number> = {};
+      let assigned = 0;
+      const entries = Object.entries(checkoutCounts).filter(([, v]) => v > 0);
+      for (let i = 0; i < entries.length; i++) {
+        const [cond, qty] = entries[i];
+        if (i === entries.length - 1) {
+          scaled[cond] = remaining - assigned;
+        } else {
+          const share = Math.round((qty / totalCheckoutCounts) * remaining);
+          scaled[cond] = share;
+          assigned += share;
+        }
       }
+      setReturnConditionCounts(scaled);
     } else {
       setReturnConditionCounts({ good: remaining });
     }
