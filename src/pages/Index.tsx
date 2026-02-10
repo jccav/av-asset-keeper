@@ -281,12 +281,12 @@ export default function Index() {
               <Input id="borrower" value={borrowerName} onChange={(e) => setBorrowerName(e.target.value)} placeholder="John Doe" />
             </div>
             <div>
-              <Label htmlFor="pin">4-Digit PIN * <span className="text-xs text-muted-foreground">(you'll need this to return)</span></Label>
-              <Input id="pin" value={checkoutPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setCheckoutPin(v); }} placeholder="e.g. 1234" inputMode="numeric" maxLength={4} />
-            </div>
-            <div>
               <Label htmlFor="team">Who are you checking this out on behalf of? *</Label>
               <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Production Team, Pastor John, etc." />
+            </div>
+            <div>
+              <Label htmlFor="pin">4-Digit PIN * <span className="text-xs text-muted-foreground">(you'll need this to return)</span></Label>
+              <Input id="pin" value={checkoutPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setCheckoutPin(v); }} placeholder="e.g. 1234" inputMode="numeric" maxLength={4} />
             </div>
             <div>
               <Label htmlFor="return-date">Expected Return Date</Label>
