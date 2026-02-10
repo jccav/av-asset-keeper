@@ -343,7 +343,7 @@ export default function Index() {
 
       {/* Checkout Dialog */}
       <Dialog open={!!checkoutItem} onOpenChange={(open) => !open && resetCheckout()}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Check Out: {checkoutItem?.name}</DialogTitle>
             <DialogDescription>
@@ -412,7 +412,7 @@ export default function Index() {
 
       {/* Return Dialog */}
       <Dialog open={!!returnItem} onOpenChange={(open) => !open && resetReturn()}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Return: {returnItem?.name}</DialogTitle>
             <DialogDescription>
