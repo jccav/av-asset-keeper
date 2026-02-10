@@ -39,6 +39,7 @@ export default function Index() {
   const [checkoutItem, setCheckoutItem] = useState<Equipment | null>(null);
   const [returnItem, setReturnItem] = useState<Equipment | null>(null);
   const [returnBorrower, setReturnBorrower] = useState("");
+  const [returnTeam, setReturnTeam] = useState("");
   const [returnPin, setReturnPin] = useState("");
   const [borrowerName, setBorrowerName] = useState("");
   const [checkoutPin, setCheckoutPin] = useState("");
@@ -138,6 +139,7 @@ export default function Index() {
   const resetReturn = () => {
     setReturnItem(null);
     setReturnBorrower("");
+    setReturnTeam("");
     setReturnPin("");
     setTeamName("");
     setReturnCondition("good");
@@ -149,13 +151,14 @@ export default function Index() {
     // Fetch who checked it out
     const { data } = await supabase
       .from("checkout_log")
-      .select("borrower_name")
+      .select("borrower_name, team_name")
       .eq("equipment_id", item.id)
       .is("return_date", null)
       .order("checkout_date", { ascending: false })
       .limit(1)
       .maybeSingle();
     setReturnBorrower(data?.borrower_name ?? "Unknown");
+    setReturnTeam(data?.team_name ?? "");
   };
 
   const filtered = equipment.filter((e) => {
@@ -308,17 +311,13 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>Return: {returnItem?.name}</DialogTitle>
             <DialogDescription>
-              Checked out by <span className="font-semibold">{returnBorrower}</span>. Enter your 4-digit PIN to return.
+              Checked out by <span className="font-semibold">{returnBorrower}</span>{returnTeam ? <> on behalf of <span className="font-semibold">{returnTeam}</span></> : ""}. Enter your 4-digit PIN to return.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label htmlFor="return-pin">4-Digit PIN *</Label>
               <Input id="return-pin" value={returnPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setReturnPin(v); }} placeholder="Enter your PIN" inputMode="numeric" maxLength={4} />
-            </div>
-            <div>
-              <Label htmlFor="return-behalf">Who are you returning this on behalf of? *</Label>
-              <Input id="return-behalf" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Production Team, Pastor John, etc." />
             </div>
             <div>
               <Label>Condition on Return</Label>
@@ -338,7 +337,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetReturn}>Cancel</Button>
-            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || !teamName || returnMutation.isPending}>
+            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || returnMutation.isPending}>
               {returnMutation.isPending ? "Processing..." : "Confirm Return"}
             </Button>
           </DialogFooter>
