@@ -81,7 +81,7 @@ export default function AdminHistory() {
                   <TableCell>{log.returned_by || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={log.return_date ? "default" : "secondary"}>
-                      {log.return_date ? "Returned" : "Active"}
+                      {log.return_date ? "Returned" : "Checked Out"}
                     </Badge>
                   </TableCell>
                   <TableCell>
