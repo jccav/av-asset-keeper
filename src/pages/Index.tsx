@@ -139,6 +139,7 @@ export default function Index() {
     setReturnItem(null);
     setReturnBorrower("");
     setReturnPin("");
+    setTeamName("");
     setReturnCondition("good");
     setReturnNotes("");
   };
@@ -280,8 +281,8 @@ export default function Index() {
               <Input id="pin" value={checkoutPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setCheckoutPin(v); }} placeholder="e.g. 1234" inputMode="numeric" maxLength={4} />
             </div>
             <div>
-              <Label htmlFor="team">Team Name</Label>
-              <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Production Team" />
+              <Label htmlFor="team">Who are you checking this out on behalf of? *</Label>
+              <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Production Team, Pastor John, etc." />
             </div>
             <div>
               <Label htmlFor="return-date">Expected Return Date</Label>
@@ -294,7 +295,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetCheckout}>Cancel</Button>
-            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || checkoutPin.length !== 4 || checkoutMutation.isPending}>
+            <Button onClick={() => checkoutMutation.mutate()} disabled={!borrowerName || !teamName || checkoutPin.length !== 4 || checkoutMutation.isPending}>
               {checkoutMutation.isPending ? "Processing..." : "Confirm Checkout"}
             </Button>
           </DialogFooter>
@@ -316,6 +317,10 @@ export default function Index() {
               <Input id="return-pin" value={returnPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setReturnPin(v); }} placeholder="Enter your PIN" inputMode="numeric" maxLength={4} />
             </div>
             <div>
+              <Label htmlFor="return-behalf">Who are you returning this on behalf of? *</Label>
+              <Input id="return-behalf" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Production Team, Pastor John, etc." />
+            </div>
+            <div>
               <Label>Condition on Return</Label>
               <Select value={returnCondition} onValueChange={setReturnCondition}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -333,7 +338,7 @@ export default function Index() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={resetReturn}>Cancel</Button>
-            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || returnMutation.isPending}>
+            <Button onClick={() => returnMutation.mutate()} disabled={returnPin.length !== 4 || !teamName || returnMutation.isPending}>
               {returnMutation.isPending ? "Processing..." : "Confirm Return"}
             </Button>
           </DialogFooter>
