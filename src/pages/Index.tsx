@@ -27,10 +27,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CONDITION_COLORS: Record<string, string> = {
-  excellent: "bg-success text-success-foreground",
+  excellent: "bg-emerald-700 text-white",
   good: "bg-success text-success-foreground",
   fair: "bg-warning text-warning-foreground",
-  damaged: "bg-destructive text-destructive-foreground",
+  damaged: "bg-orange-600 text-white",
   bad: "bg-destructive text-destructive-foreground",
 };
 
@@ -338,7 +338,7 @@ export default function Index() {
                   )}
                   <div className="mt-2 flex gap-2">
                     {item.quantity_available > 0 ? (
-                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); setCheckoutQty(1); setCheckoutConditionCounts({ good: 1 }); }}>
+                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); const counts = ((item as any).condition_counts ?? {}) as Record<string, number>; const hasAny = Object.values(counts).reduce((a, b) => a + b, 0) > 0; setCheckoutConditionCounts(hasAny ? { ...counts } : { good: 1 }); }}>
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
                     ) : null}
@@ -382,21 +382,26 @@ export default function Index() {
             <div>
               <Label className="mb-2 block">Condition of Items Being Checked Out</Label>
               <div className="space-y-2 rounded-md border p-3">
-                {(["excellent", "good", "fair", "bad", "damaged"] as const).map((c) => (
+                {(["excellent", "good", "fair", "bad", "damaged"] as const).map((c) => {
+                  const availForCondition = ((checkoutItem as any)?.condition_counts ?? {})[c] ?? 0;
+                  return (
                   <div key={c} className="flex items-center gap-3">
                     <span className="w-24 text-sm capitalize">{c}</span>
                     <Input
                       type="number"
                       min={0}
+                      max={availForCondition}
                       className="h-8 w-20"
                       value={checkoutConditionCounts[c] ?? 0}
                       onChange={(e) => {
-                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), availForCondition);
                         setCheckoutConditionCounts({ ...checkoutConditionCounts, [c]: val });
                       }}
                     />
+                    <span className="text-xs text-muted-foreground">/ {availForCondition} avail</span>
                   </div>
-                ))}
+                  );
+                })}
                 {(() => {
                   const sum = Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0);
                   const max = checkoutItem?.quantity_available ?? 1;
