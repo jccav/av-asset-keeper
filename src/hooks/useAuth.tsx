@@ -38,16 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchRole(session.user.id);
+          // Defer role fetch to avoid blocking the auth callback
+          setTimeout(() => {
+            if (mounted) {
+              fetchRole(session.user.id).finally(() => {
+                if (mounted) setLoading(false);
+              });
+            }
+          }, 0);
         } else {
           setRole(null);
+          setLoading(false);
         }
-        if (mounted) setLoading(false);
       }
     );
 
