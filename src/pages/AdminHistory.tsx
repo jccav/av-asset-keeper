@@ -82,9 +82,13 @@ export default function AdminHistory() {
                   <TableCell>{log.return_date ? format(new Date(log.return_date), "MMM d, yyyy h:mm a") : "—"}</TableCell>
                   <TableCell>{log.returned_by || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={log.return_date ? "default" : (log.quantity_returned ?? 0) > 0 ? "outline" : "secondary"}>
-                      {log.return_date ? "Returned" : (log.quantity_returned ?? 0) > 0 ? "Partially Returned" : "Checked Out"}
-                    </Badge>
+                    {log.return_date ? (
+                      <Badge className="bg-success text-success-foreground">Returned</Badge>
+                    ) : (log.quantity_returned ?? 0) > 0 ? (
+                      <Badge className="bg-warning text-warning-foreground">Partially Returned</Badge>
+                    ) : (
+                      <Badge variant="secondary">Checked Out</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     {(!log.return_date && log.equipment) ? (
