@@ -25,12 +25,26 @@ export default function AdminAdmins() {
   const { data: admins = [] } = useQuery({
     queryKey: ["admin-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch roles
+      const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("*, profiles(email, display_name)")
+        .select("*")
         .order("created_at");
-      if (error) throw error;
-      return data;
+      if (rolesError) throw rolesError;
+      if (!roles || roles.length === 0) return [];
+
+      // Fetch profiles for those user_ids
+      const userIds = roles.map((r) => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, email, display_name")
+        .in("user_id", userIds);
+
+      // Merge
+      return roles.map((r) => {
+        const profile = profiles?.find((p) => p.user_id === r.user_id);
+        return { ...r, email: profile?.email ?? "Unknown", display_name: profile?.display_name };
+      });
     },
   });
 
@@ -113,7 +127,7 @@ export default function AdminAdmins() {
             <TableBody>
               {admins.map((a: any) => (
                 <TableRow key={a.id}>
-                  <TableCell className="font-medium">{a.profiles?.email ?? "Unknown"}</TableCell>
+                  <TableCell className="font-medium">{a.email}</TableCell>
                   <TableCell>
                     {a.role === "master_admin" ? (
                       <Badge className="gap-1 bg-primary"><Shield className="h-3 w-3" /> Master Admin</Badge>
