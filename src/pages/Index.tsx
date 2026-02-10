@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   lighting: "Lighting",
   presentation: "Presentation",
   cables_accessories: "Cables & Accessories",
+  other: "Other",
 };
 
 const CONDITION_COLORS: Record<string, string> = {

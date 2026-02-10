@@ -1,5 +1,6 @@
-import { Package, LayoutDashboard, Archive, History, Users, LogOut } from "lucide-react";
+import { Package, LayoutDashboard, Archive, History, Users, LogOut, ExternalLink } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
@@ -49,6 +50,9 @@ export function AdminSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
+        <Link to="/" className="mb-3 flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground">
+          <ExternalLink className="h-4 w-4" /> Public Equipment Page
+        </Link>
         <div className="mb-2 truncate text-xs text-sidebar-foreground/70">{user?.email}</div>
         <div className="mb-3 text-xs font-medium capitalize text-sidebar-primary">
           {role === "master_admin" ? "Master Admin" : "Admin"}
