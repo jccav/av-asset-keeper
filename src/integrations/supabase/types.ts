@@ -83,6 +83,7 @@ export type Database = {
         Row: {
           category: Database["public"]["Enums"]["equipment_category"]
           condition: Database["public"]["Enums"]["equipment_condition"]
+          condition_counts: Json
           created_at: string
           id: string
           is_available: boolean
@@ -96,6 +97,7 @@ export type Database = {
         Insert: {
           category?: Database["public"]["Enums"]["equipment_category"]
           condition?: Database["public"]["Enums"]["equipment_condition"]
+          condition_counts?: Json
           created_at?: string
           id?: string
           is_available?: boolean
@@ -109,6 +111,7 @@ export type Database = {
         Update: {
           category?: Database["public"]["Enums"]["equipment_category"]
           condition?: Database["public"]["Enums"]["equipment_condition"]
+          condition_counts?: Json
           created_at?: string
           id?: string
           is_available?: boolean

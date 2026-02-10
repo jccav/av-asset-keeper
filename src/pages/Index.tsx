@@ -139,12 +139,20 @@ export default function Index() {
         })
         .eq("id", log.id);
       if (logError) throw logError;
-      // Restore quantity
-      const { data: eq } = await supabase.from("equipment").select("quantity_available, total_quantity").eq("id", returnItem.id).single();
+      // Restore quantity and update condition_counts
+      const { data: eq } = await supabase.from("equipment").select("quantity_available, total_quantity, condition_counts").eq("id", returnItem.id).single();
       const restored = Math.min((eq?.quantity_available ?? 0) + returnQuantity, eq?.total_quantity ?? returnQuantity);
+      const counts = (eq?.condition_counts ?? {}) as Record<string, number>;
+      counts[returnCondition] = (counts[returnCondition] ?? 0) + returnQuantity;
+      const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
       const { error: eqError } = await supabase
         .from("equipment")
-        .update({ quantity_available: restored, is_available: true, condition: returnCondition as Equipment["condition"] })
+        .update({
+          quantity_available: restored,
+          is_available: true,
+          condition: mainCondition as Equipment["condition"],
+          condition_counts: counts,
+        })
         .eq("id", returnItem.id);
       if (eqError) throw eqError;
     },
@@ -275,9 +283,18 @@ export default function Index() {
                 <CardContent className="flex flex-col gap-3">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{CATEGORY_LABELS[item.category]}</Badge>
-                    <Badge className={CONDITION_COLORS[item.condition]}>
-                      {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
-                    </Badge>
+                    {Object.entries(((item as any).condition_counts ?? {}) as Record<string, number>)
+                      .filter(([, v]) => v > 0)
+                      .map(([k, v]) => (
+                        <Badge key={k} className={CONDITION_COLORS[k]}>
+                          {v} {k.charAt(0).toUpperCase() + k.slice(1)}
+                        </Badge>
+                      ))}
+                    {Object.keys(((item as any).condition_counts ?? {}) as Record<string, number>).length === 0 && (
+                      <Badge className={CONDITION_COLORS[item.condition]}>
+                        {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
+                      </Badge>
+                    )}
                   </div>
                   {item.notes && (
                     <p className="text-sm text-muted-foreground line-clamp-2">{item.notes}</p>
