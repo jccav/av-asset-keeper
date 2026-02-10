@@ -64,7 +64,7 @@ export default function AdminInventory() {
       } else {
         const { error } = await supabase.from("equipment").insert({
           name: form.name, category: form.category as Equipment["category"],
-          condition: form.condition as Equipment["condition"], notes: form.notes || null,
+          condition: form.condition as Equipment["condition"], notes: form.notes || null, is_available: form.is_available,
         });
         if (error) throw error;
       }
@@ -228,8 +228,7 @@ export default function AdminInventory() {
                 </SelectContent>
               </Select>
             </div>
-            {editing && (
-              <div>
+            <div>
                 <Label>Availability Status</Label>
                 <Select value={form.is_available ? "available" : "checked_out"} onValueChange={(v) => setForm({ ...form, is_available: v === "available" })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -239,7 +238,7 @@ export default function AdminInventory() {
                   </SelectContent>
                 </Select>
               </div>
-            )}
+            
             <div><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Serial number, notes..." /></div>
           </div>
           <DialogFooter>
