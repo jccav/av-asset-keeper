@@ -170,6 +170,7 @@ export type Database = {
         | "lighting"
         | "presentation"
         | "cables_accessories"
+        | "other"
       equipment_condition: "good" | "fair" | "damaged"
     }
     CompositeTypes: {
@@ -305,6 +306,7 @@ export const Constants = {
         "lighting",
         "presentation",
         "cables_accessories",
+        "other",
       ],
       equipment_condition: ["good", "fair", "damaged"],
     },

@@ -18,7 +18,7 @@ type Equipment = Tables<"equipment">;
 
 const CATEGORY_LABELS: Record<string, string> = {
   audio: "Audio", video: "Video", lighting: "Lighting",
-  presentation: "Presentation", cables_accessories: "Cables & Accessories",
+  presentation: "Presentation", cables_accessories: "Cables & Accessories", other: "Other",
 };
 
 export default function AdminInventory() {
@@ -27,7 +27,7 @@ export default function AdminInventory() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Equipment | null>(null);
-  const [form, setForm] = useState({ name: "", category: "audio" as string, condition: "good" as string, notes: "" });
+  const [form, setForm] = useState({ name: "", category: "audio" as string, condition: "good" as string, notes: "", is_available: true });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["admin-equipment"],
@@ -46,6 +46,7 @@ export default function AdminInventory() {
           category: form.category as Equipment["category"],
           condition: form.condition as Equipment["condition"],
           notes: form.notes || null,
+          is_available: form.is_available,
         }).eq("id", editing.id);
         if (error) throw error;
       } else {
@@ -92,13 +93,13 @@ export default function AdminInventory() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: "", category: "audio", condition: "good", notes: "" });
+    setForm({ name: "", category: "audio", condition: "good", notes: "", is_available: true });
     setDialogOpen(true);
   };
 
   const openEdit = (item: Equipment) => {
     setEditing(item);
-    setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "" });
+    setForm({ name: item.name, category: item.category, condition: item.condition, notes: item.notes || "", is_available: item.is_available });
     setDialogOpen(true);
   };
 
@@ -195,6 +196,18 @@ export default function AdminInventory() {
                 </SelectContent>
               </Select>
             </div>
+            {editing && (
+              <div>
+                <Label>Availability Status</Label>
+                <Select value={form.is_available ? "available" : "checked_out"} onValueChange={(v) => setForm({ ...form, is_available: v === "available" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="checked_out">Checked Out</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>Notes</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Serial number, notes..." />
