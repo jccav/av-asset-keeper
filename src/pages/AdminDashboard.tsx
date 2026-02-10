@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, CheckCircle, AlertTriangle, ArrowRightLeft } from "lucide-react";
+import { Package, CheckCircle, AlertTriangle, ArrowRightLeft, Archive } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminDashboard() {
@@ -12,6 +12,15 @@ export default function AdminDashboard() {
       const { data, error } = await supabase.from("equipment").select("*").eq("is_retired", false);
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: archivedCount = 0 } = useQuery({
+    queryKey: ["equipment-archived-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("equipment").select("*", { count: "exact", head: true }).eq("is_retired", true);
+      if (error) throw error;
+      return count ?? 0;
     },
   });
 
@@ -38,12 +47,13 @@ export default function AdminDashboard() {
     { label: "Available", value: available, icon: CheckCircle, color: "text-success" },
     { label: "Checked Out", value: checkedOut, icon: ArrowRightLeft, color: "text-warning" },
     { label: "Damaged", value: damaged, icon: AlertTriangle, color: "text-destructive" },
+    { label: "Archived", value: archivedCount, icon: Archive, color: "text-muted-foreground" },
   ];
 
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold">Dashboard</h1>
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map((s) => (
           <Card key={s.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
