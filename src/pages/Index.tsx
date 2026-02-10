@@ -26,9 +26,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CONDITION_COLORS: Record<string, string> = {
+  excellent: "bg-success text-success-foreground",
   good: "bg-success text-success-foreground",
   fair: "bg-warning text-warning-foreground",
   damaged: "bg-destructive text-destructive-foreground",
+  bad: "bg-destructive text-destructive-foreground",
 };
 
 export default function Index() {
@@ -106,23 +108,31 @@ export default function Index() {
   const returnMutation = useMutation({
     mutationFn: async () => {
       if (!returnItem) return;
-      const { data: log, error: findError } = await supabase
+      // Find the active (not fully returned) checkout log
+      const { data: logs, error: findError } = await supabase
         .from("checkout_log")
-        .select("id, borrower_name, pin, quantity")
+        .select("id, borrower_name, pin, quantity, quantity_returned")
         .eq("equipment_id", returnItem.id)
         .is("return_date", null)
-        .order("checkout_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order("checkout_date", { ascending: false });
       if (findError) throw findError;
+      // Find log that still has unreturned items
+      const log = logs?.find(l => (l.quantity - (l.quantity_returned ?? 0)) > 0);
       if (!log) throw new Error("No active checkout found.");
       if (returnPin.trim() !== log.pin) {
         throw new Error("Incorrect PIN. Please enter the 4-digit PIN used during checkout.");
       }
+      const remainingBefore = log.quantity - (log.quantity_returned ?? 0);
+      if (returnQuantity > remainingBefore) {
+        throw new Error(`Only ${remainingBefore} items are still checked out.`);
+      }
+      const newQtyReturned = (log.quantity_returned ?? 0) + returnQuantity;
+      const fullyReturned = newQtyReturned >= log.quantity;
       const { error: logError } = await supabase
         .from("checkout_log")
         .update({
-          return_date: new Date().toISOString(),
+          quantity_returned: newQtyReturned,
+          ...(fullyReturned ? { return_date: new Date().toISOString() } : {}),
           condition_on_return: returnCondition as Equipment["condition"],
           notes: returnNotes || null,
           returned_by: borrowerName || log.borrower_name,
@@ -130,13 +140,11 @@ export default function Index() {
         .eq("id", log.id);
       if (logError) throw logError;
       // Restore quantity
-      const { data: eq } = await supabase.from("equipment").select("quantity_available").eq("id", returnItem.id).single();
-      const restored = (eq?.quantity_available ?? 0) + (log.quantity ?? returnQuantity);
-      const { data: eqTotal } = await supabase.from("equipment").select("total_quantity").eq("id", returnItem.id).single();
-      const cappedRestored = Math.min(restored, eqTotal?.total_quantity ?? restored);
+      const { data: eq } = await supabase.from("equipment").select("quantity_available, total_quantity").eq("id", returnItem.id).single();
+      const restored = Math.min((eq?.quantity_available ?? 0) + returnQuantity, eq?.total_quantity ?? returnQuantity);
       const { error: eqError } = await supabase
         .from("equipment")
-        .update({ quantity_available: cappedRestored, is_available: true, condition: returnCondition as Equipment["condition"] })
+        .update({ quantity_available: restored, is_available: true, condition: returnCondition as Equipment["condition"] })
         .eq("id", returnItem.id);
       if (eqError) throw eqError;
     },
@@ -172,19 +180,18 @@ export default function Index() {
 
   const openReturn = async (item: Equipment) => {
     setReturnItem(item);
-    // Fetch who checked it out
     const { data } = await supabase
       .from("checkout_log")
-      .select("borrower_name, team_name, quantity")
+      .select("borrower_name, team_name, quantity, quantity_returned")
       .eq("equipment_id", item.id)
       .is("return_date", null)
-      .order("checkout_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setReturnBorrower(data?.borrower_name ?? "Unknown");
-    setReturnTeam(data?.team_name ?? "");
-    setReturnQuantity(data?.quantity ?? 1);
-    setReturnMaxQty(data?.quantity ?? 1);
+      .order("checkout_date", { ascending: false });
+    const log = data?.find(l => (l.quantity - (l.quantity_returned ?? 0)) > 0);
+    setReturnBorrower(log?.borrower_name ?? "Unknown");
+    setReturnTeam(log?.team_name ?? "");
+    const remaining = (log?.quantity ?? 1) - (log?.quantity_returned ?? 0);
+    setReturnQuantity(remaining);
+    setReturnMaxQty(remaining);
   };
 
   const filtered = equipment.filter((e) => {
@@ -354,14 +361,22 @@ export default function Index() {
               <Label htmlFor="return-pin">4-Digit PIN *</Label>
               <Input id="return-pin" value={returnPin} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setReturnPin(v); }} placeholder="Enter your PIN" inputMode="numeric" maxLength={4} />
             </div>
+            {returnMaxQty > 1 && (
+              <div>
+                <Label htmlFor="return-qty">Quantity to Return * <span className="text-xs text-muted-foreground">(max {returnMaxQty})</span></Label>
+                <Input id="return-qty" type="number" min={1} max={returnMaxQty} value={returnQuantity} onChange={(e) => setReturnQuantity(Math.max(1, Math.min(returnMaxQty, parseInt(e.target.value) || 1)))} />
+              </div>
+            )}
             <div>
               <Label>Condition on Return</Label>
               <Select value={returnCondition} onValueChange={setReturnCondition}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="excellent">Excellent</SelectItem>
                   <SelectItem value="good">Good</SelectItem>
                   <SelectItem value="fair">Fair</SelectItem>
                   <SelectItem value="damaged">Damaged</SelectItem>
+                  <SelectItem value="bad">Bad</SelectItem>
                 </SelectContent>
               </Select>
             </div>

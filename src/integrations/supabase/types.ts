@@ -28,6 +28,7 @@ export type Database = {
           notes: string | null
           pin: string | null
           quantity: number
+          quantity_returned: number
           return_date: string | null
           returned_by: string | null
           team_name: string | null
@@ -45,6 +46,7 @@ export type Database = {
           notes?: string | null
           pin?: string | null
           quantity?: number
+          quantity_returned?: number
           return_date?: string | null
           returned_by?: string | null
           team_name?: string | null
@@ -62,6 +64,7 @@ export type Database = {
           notes?: string | null
           pin?: string | null
           quantity?: number
+          quantity_returned?: number
           return_date?: string | null
           returned_by?: string | null
           team_name?: string | null
@@ -186,7 +189,7 @@ export type Database = {
         | "presentation"
         | "cables_accessories"
         | "other"
-      equipment_condition: "good" | "fair" | "damaged"
+      equipment_condition: "excellent" | "good" | "fair" | "damaged" | "bad"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -323,7 +326,7 @@ export const Constants = {
         "cables_accessories",
         "other",
       ],
-      equipment_condition: ["good", "fair", "damaged"],
+      equipment_condition: ["excellent", "good", "fair", "damaged", "bad"],
     },
   },
 } as const
