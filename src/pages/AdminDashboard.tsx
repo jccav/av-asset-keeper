@@ -11,7 +11,7 @@ import { Package, CheckCircle, AlertTriangle, ArrowRightLeft, Archive, Undo2 } f
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
-const CONDITIONS = ["excellent", "good", "fair", "damaged", "bad"] as const;
+const CONDITIONS = ["excellent", "good", "fair", "bad", "damaged"] as const;
 
 export default function AdminDashboard() {
   const { toast } = useToast();
