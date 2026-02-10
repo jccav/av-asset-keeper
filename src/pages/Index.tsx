@@ -281,7 +281,7 @@ export default function Index() {
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
                     ) : null}
-                    {!item.is_available && (
+                    {item.quantity_available < item.total_quantity && (
                       <Button variant="outline" className="w-full gap-2" onClick={() => openReturn(item)}>
                         <ArrowRightLeft className="h-4 w-4" /> Return
                       </Button>
