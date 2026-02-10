@@ -45,7 +45,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Create user via admin API
+    // Try to create user; if already exists, look them up
+    let userId: string;
     const { data: newUser, error: createError } = await serviceClient.auth.admin.createUser({
       email,
       password,
@@ -53,12 +54,32 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (createError.message.includes("already been registered")) {
+        // User exists — find them and add the role
+        const { data: { users }, error: listError } = await serviceClient.auth.admin.listUsers();
+        if (listError) {
+          return new Response(JSON.stringify({ error: listError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const existing = users.find((u: any) => u.email === email);
+        if (!existing) {
+          return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        // Check if already an admin
+        const { data: existingRole } = await serviceClient.from("user_roles").select("id").eq("user_id", existing.id).maybeSingle();
+        if (existingRole) {
+          return new Response(JSON.stringify({ error: "This user is already an admin" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        userId = existing.id;
+      } else {
+        return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } else {
+      userId = newUser.user.id;
     }
 
     // Assign admin role
     const { error: roleError } = await serviceClient.from("user_roles").insert({
-      user_id: newUser.user.id,
+      user_id: userId,
       role: "admin",
     });
 
