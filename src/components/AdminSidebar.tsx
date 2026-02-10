@@ -1,6 +1,7 @@
-import { Package, LayoutDashboard, Archive, History, Users, LogOut, ExternalLink } from "lucide-react";
+import { LayoutDashboard, Archive, History, Users, LogOut, ExternalLink } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
+import jccLogo from "@/assets/jcc-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
@@ -30,8 +31,8 @@ export function AdminSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 px-4 py-3">
-            <Package className="h-5 w-5" />
-            <span className="font-semibold">AV Tracker</span>
+            <img src={jccLogo} alt="JCC Logo" className="h-8 w-8 object-contain" />
+            <span className="font-semibold">JCC AV Tracker</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
