@@ -53,7 +53,11 @@ export default function AdminAdmins() {
       const { data, error } = await supabase.functions.invoke("invite-admin", {
         body: { email: inviteEmail, password: invitePassword },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to extract meaningful error from the response
+        const msg = data?.error || error.message || "Failed to invite admin";
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
