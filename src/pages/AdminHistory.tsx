@@ -58,10 +58,11 @@ export default function AdminHistory() {
               <TableRow>
                 <TableHead>Equipment</TableHead>
                 <TableHead>Borrower</TableHead>
-                <TableHead>Team</TableHead>
+                <TableHead>On Behalf Of</TableHead>
                 <TableHead>PIN</TableHead>
                 <TableHead>Checked Out</TableHead>
                 <TableHead>Returned</TableHead>
+                <TableHead>Returned By</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -75,6 +76,7 @@ export default function AdminHistory() {
                   <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin || "—"}</code></TableCell>
                   <TableCell>{format(new Date(log.checkout_date), "MMM d, yyyy h:mm a")}</TableCell>
                   <TableCell>{log.return_date ? format(new Date(log.return_date), "MMM d, yyyy h:mm a") : "—"}</TableCell>
+                  <TableCell>{log.returned_by || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={log.return_date ? "default" : "secondary"}>
                       {log.return_date ? "Returned" : "Active"}
@@ -102,7 +104,7 @@ export default function AdminHistory() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

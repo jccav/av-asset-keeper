@@ -28,6 +28,7 @@ export type Database = {
           notes: string | null
           pin: string | null
           return_date: string | null
+          returned_by: string | null
           team_name: string | null
         }
         Insert: {
@@ -43,6 +44,7 @@ export type Database = {
           notes?: string | null
           pin?: string | null
           return_date?: string | null
+          returned_by?: string | null
           team_name?: string | null
         }
         Update: {
@@ -58,6 +60,7 @@ export type Database = {
           notes?: string | null
           pin?: string | null
           return_date?: string | null
+          returned_by?: string | null
           team_name?: string | null
         }
         Relationships: [

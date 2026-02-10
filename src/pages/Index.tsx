@@ -110,6 +110,7 @@ export default function Index() {
           return_date: new Date().toISOString(),
           condition_on_return: returnCondition as Equipment["condition"],
           notes: returnNotes || null,
+          returned_by: borrowerName || log.borrower_name,
         })
         .eq("id", log.id);
       if (logError) throw logError;
