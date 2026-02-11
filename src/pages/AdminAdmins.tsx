@@ -125,11 +125,16 @@ export default function AdminAdmins() {
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Admin Management</h1>
-        {isMaster && (
-          <Button onClick={() => setInviteOpen(true)} className="gap-2">
-            <UserPlus className="h-4 w-4" /> Invite Admin
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setResetTarget(user?.id ?? null); }} className="gap-2">
+            <KeyRound className="h-4 w-4" /> Reset My Password
           </Button>
-        )}
+          {isMaster && (
+            <Button onClick={() => setInviteOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" /> Invite Admin
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -143,7 +148,7 @@ export default function AdminAdmins() {
               <TableRow>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
-                {isMaster && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -157,10 +162,10 @@ export default function AdminAdmins() {
                       <Badge variant="secondary">Admin</Badge>
                     )}
                   </TableCell>
-                  {isMaster && (
-                    <TableCell className="text-right">
-                      {a.user_id !== user?.id && (
-                        <div className="flex justify-end gap-1">
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {isMaster && a.user_id !== user?.id && (
+                        <>
                           <Button variant="ghost" size="sm" className="gap-1" onClick={() => setResetTarget(a.user_id)}>
                             <KeyRound className="h-3 w-3" /> Reset Password
                           </Button>
@@ -170,14 +175,14 @@ export default function AdminAdmins() {
                           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setRemoveTarget(a.user_id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
-                        </div>
+                        </>
                       )}
-                    </TableCell>
-                  )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {admins.length === 0 && (
-                <TableRow><TableCell colSpan={isMaster ? 3 : 2} className="py-8 text-center text-muted-foreground">No admins found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">No admins found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
