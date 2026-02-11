@@ -158,11 +158,7 @@ export default function Index() {
   const openReturn = async (item: Equipment) => {
     setReturnItem(item);
     const { data } = await supabase
-      .from("checkout_log_public" as any)
-      .select("borrower_name, team_name, quantity, quantity_returned, checkout_condition_counts")
-      .eq("equipment_id", item.id)
-      .is("return_date", null)
-      .order("checkout_date", { ascending: false });
+      .rpc("get_active_checkouts", { p_equipment_id: item.id });
     const log = (data as any[])?.find((l: any) => (l.quantity - (l.quantity_returned ?? 0)) > 0);
     setReturnBorrower(log?.borrower_name ?? "Unknown");
     setReturnTeam(log?.team_name ?? "");
