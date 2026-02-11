@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Shield, Trash2, ArrowRightLeft } from "lucide-react";
+import { UserPlus, Shield, Trash2, ArrowRightLeft, KeyRound } from "lucide-react";
 
 export default function AdminAdmins() {
   const { toast } = useToast();
@@ -22,6 +22,8 @@ export default function AdminAdmins() {
   const [invitePassword, setInvitePassword] = useState("");
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   const { data: admins = [] } = useQuery({
     queryKey: ["admin-list"],
@@ -98,8 +100,23 @@ export default function AdminAdmins() {
       queryClient.invalidateQueries({ queryKey: ["admin-list"] });
       toast({ title: "Master Admin transferred" });
       setTransferTarget(null);
-      // Refresh role
       window.location.reload();
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("reset-admin-password", {
+        body: { user_id: userId, new_password: resetPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      toast({ title: "Password reset", description: "The admin's password has been updated." });
+      setResetTarget(null);
+      setResetPassword("");
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -144,6 +161,9 @@ export default function AdminAdmins() {
                     <TableCell className="text-right">
                       {a.user_id !== user?.id && (
                         <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" className="gap-1" onClick={() => setResetTarget(a.user_id)}>
+                            <KeyRound className="h-3 w-3" /> Reset Password
+                          </Button>
                           <Button variant="ghost" size="sm" className="gap-1" onClick={() => setTransferTarget(a.user_id)}>
                             <ArrowRightLeft className="h-3 w-3" /> Transfer Master
                           </Button>
@@ -217,6 +237,30 @@ export default function AdminAdmins() {
             <Button variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>
             <Button variant="destructive" onClick={() => { if (removeTarget) { removeMutation.mutate(removeTarget); setRemoveTarget(null); } }} disabled={removeMutation.isPending}>
               {removeMutation.isPending ? "Removing..." : "Yes, Revoke Access"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) { setResetTarget(null); setResetPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Admin Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {admins.find((a: any) => a.user_id === resetTarget)?.email || "this admin"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>New Password *</Label>
+              <Input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Min 8 characters" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetTarget(null); setResetPassword(""); }}>Cancel</Button>
+            <Button onClick={() => resetTarget && resetPasswordMutation.mutate(resetTarget)} disabled={!resetPassword || resetPassword.length < 8 || resetPasswordMutation.isPending}>
+              {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
             </Button>
           </DialogFooter>
         </DialogContent>
