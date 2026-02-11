@@ -76,88 +76,30 @@ export default function Index() {
       if (!checkoutItem) return;
       const checkoutTotal = Object.values(checkoutConditionCounts).reduce((a, b) => a + b, 0);
       if (checkoutTotal < 1) throw new Error("Specify at least 1 item to check out.");
-      // Validate quantity available
-      const { data: current, error: fetchErr } = await supabase
-        .from("equipment")
-        .select("quantity_available, condition_counts")
-        .eq("id", checkoutItem.id)
-        .single();
-      if (fetchErr) throw fetchErr;
-      if (!current || current.quantity_available < checkoutTotal) {
-        throw new Error(`Only ${current?.quantity_available ?? 0} available. You requested ${checkoutTotal}.`);
-      }
+      if (checkoutPin.length !== 4) throw new Error("PIN must be 4 digits.");
 
-      // Check for existing matching checkout to merge
-      if (!forceMerge) {
-        const { data: existing } = await supabase
-          .from("checkout_log")
-          .select("id, quantity, checkout_condition_counts")
-          .eq("equipment_id", checkoutItem.id)
-          .eq("borrower_name", borrowerName)
-          .eq("pin", checkoutPin)
-          .is("return_date", null)
-          .order("checkout_date", { ascending: false })
-          .limit(1);
-        const match = existing?.find(l => (l as any).quantity > 0);
-        if (match) {
-          setMergeTarget(match);
-          setShowMergeConfirm(true);
-          return "merge_prompt";
-        }
-      }
-
-      if (forceMerge && mergeTarget) {
-        // Merge into existing record
-        const existingCounts = (mergeTarget.checkout_condition_counts ?? {}) as Record<string, number>;
-        const mergedCounts: Record<string, number> = { ...existingCounts };
-        for (const [cond, qty] of Object.entries(checkoutConditionCounts)) {
-          if (qty > 0) mergedCounts[cond] = (mergedCounts[cond] ?? 0) + qty;
-        }
-        const newQty = mergeTarget.quantity + checkoutTotal;
-        const { error: mergeErr } = await supabase
-          .from("checkout_log")
-          .update({
-            quantity: newQty,
-            checkout_condition_counts: mergedCounts,
-            notes: checkoutNotes ? (mergeTarget.notes ? `${mergeTarget.notes}; ${checkoutNotes}` : checkoutNotes) : mergeTarget.notes,
-          })
-          .eq("id", mergeTarget.id);
-        if (mergeErr) throw mergeErr;
-      } else {
-        // New checkout record
-        const { error: logError } = await supabase.from("checkout_log").insert({
+      const { data, error } = await supabase.functions.invoke("checkout", {
+        body: {
           equipment_id: checkoutItem.id,
           borrower_name: borrowerName,
           team_name: teamName || null,
           expected_return: expectedReturn || null,
           notes: checkoutNotes || null,
           pin: checkoutPin,
-          quantity: checkoutTotal,
-          checkout_condition_counts: checkoutConditionCounts,
-        });
-        if (logError) throw logError;
+          condition_counts: checkoutConditionCounts,
+          force_merge: !!forceMerge,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.merge_prompt) {
+        setMergeTarget(data.existing);
+        setShowMergeConfirm(true);
+        return "merge_prompt";
       }
-
-      // Subtract from condition_counts
-      const counts = (current.condition_counts ?? {}) as Record<string, number>;
-      for (const [cond, qty] of Object.entries(checkoutConditionCounts)) {
-        if (qty > 0) counts[cond] = Math.max(0, (counts[cond] ?? 0) - qty);
-      }
-      const newAvailable = current.quantity_available - checkoutTotal;
-      const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
-      const { error: eqError } = await supabase
-        .from("equipment")
-        .update({
-          quantity_available: newAvailable,
-          is_available: newAvailable > 0,
-          condition: mainCondition as Equipment["condition"],
-          condition_counts: counts,
-        })
-        .eq("id", checkoutItem.id);
-      if (eqError) throw eqError;
     },
     onSuccess: (result) => {
-      if (result === "merge_prompt") return; // Don't close, showing merge dialog
+      if (result === "merge_prompt") return;
       queryClient.invalidateQueries({ queryKey: ["equipment"] });
       toast({ title: "Checked out!", description: `${checkoutItem?.name} has been signed out.` });
       resetCheckout();
@@ -168,59 +110,17 @@ export default function Index() {
   const returnMutation = useMutation({
     mutationFn: async () => {
       if (!returnItem) return;
-      // Find the active (not fully returned) checkout log
-      const { data: logs, error: findError } = await supabase
-        .from("checkout_log")
-        .select("id, borrower_name, pin, quantity, quantity_returned")
-        .eq("equipment_id", returnItem.id)
-        .is("return_date", null)
-        .order("checkout_date", { ascending: false });
-      if (findError) throw findError;
-      // Find log that still has unreturned items
-      const log = logs?.find(l => (l.quantity - (l.quantity_returned ?? 0)) > 0);
-      if (!log) throw new Error("No active checkout found.");
-      if (returnPin.trim() !== log.pin) {
-        throw new Error("Incorrect PIN. Please enter the 4-digit PIN used during checkout.");
-      }
-      const totalReturning = Object.values(returnConditionCounts).reduce((a, b) => a + b, 0);
-      const remainingBefore = log.quantity - (log.quantity_returned ?? 0);
-      if (totalReturning > remainingBefore || totalReturning < 1) {
-        throw new Error(`You must return between 1 and ${remainingBefore} items.`);
-      }
-      const newQtyReturned = (log.quantity_returned ?? 0) + totalReturning;
-      const fullyReturned = newQtyReturned >= log.quantity;
-      // Determine main condition for the log entry
-      const mainReturnCondition = Object.entries(returnConditionCounts).reduce((a, b) => b[1] > a[1] ? b : a, ["good", 0])[0];
-      const { error: logError } = await supabase
-        .from("checkout_log")
-        .update({
-          quantity_returned: newQtyReturned,
-          ...(fullyReturned ? { return_date: new Date().toISOString() } : {}),
-          condition_on_return: mainReturnCondition as Equipment["condition"],
+      const { data, error } = await supabase.functions.invoke("return-equipment", {
+        body: {
+          equipment_id: returnItem.id,
+          pin: returnPin,
+          condition_counts: returnConditionCounts,
           return_notes: returnNotes || null,
-          returned_by: borrowerName || log.borrower_name,
-        })
-        .eq("id", log.id);
-      if (logError) throw logError;
-      // Restore quantity and update condition_counts
-      const { data: eq } = await supabase.from("equipment").select("quantity_available, total_quantity, condition_counts").eq("id", returnItem.id).single();
-      const restored = Math.min((eq?.quantity_available ?? 0) + totalReturning, eq?.total_quantity ?? totalReturning);
-      const counts = (eq?.condition_counts ?? {}) as Record<string, number>;
-      // Add each condition's returned quantity
-      for (const [cond, qty] of Object.entries(returnConditionCounts)) {
-        if (qty > 0) counts[cond] = (counts[cond] ?? 0) + qty;
-      }
-      const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
-      const { error: eqError } = await supabase
-        .from("equipment")
-        .update({
-          quantity_available: restored,
-          is_available: true,
-          condition: mainCondition as Equipment["condition"],
-          condition_counts: counts,
-        })
-        .eq("id", returnItem.id);
-      if (eqError) throw eqError;
+          returned_by: borrowerName || null,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["equipment"] });
@@ -258,12 +158,12 @@ export default function Index() {
   const openReturn = async (item: Equipment) => {
     setReturnItem(item);
     const { data } = await supabase
-      .from("checkout_log")
+      .from("checkout_log_public" as any)
       .select("borrower_name, team_name, quantity, quantity_returned, checkout_condition_counts")
       .eq("equipment_id", item.id)
       .is("return_date", null)
       .order("checkout_date", { ascending: false });
-    const log = data?.find(l => (l.quantity - (l.quantity_returned ?? 0)) > 0);
+    const log = (data as any[])?.find((l: any) => (l.quantity - (l.quantity_returned ?? 0)) > 0);
     setReturnBorrower(log?.borrower_name ?? "Unknown");
     setReturnTeam(log?.team_name ?? "");
     const remaining = (log?.quantity ?? 1) - (log?.quantity_returned ?? 0);

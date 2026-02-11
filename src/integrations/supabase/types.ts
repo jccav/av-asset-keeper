@@ -177,7 +177,74 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      checkout_log_public: {
+        Row: {
+          borrower_name: string | null
+          checkout_condition_counts: Json | null
+          checkout_date: string | null
+          condition_on_return:
+            | Database["public"]["Enums"]["equipment_condition"]
+            | null
+          created_at: string | null
+          equipment_id: string | null
+          expected_return: string | null
+          id: string | null
+          notes: string | null
+          quantity: number | null
+          quantity_returned: number | null
+          return_date: string | null
+          return_notes: string | null
+          returned_by: string | null
+          team_name: string | null
+        }
+        Insert: {
+          borrower_name?: string | null
+          checkout_condition_counts?: Json | null
+          checkout_date?: string | null
+          condition_on_return?:
+            | Database["public"]["Enums"]["equipment_condition"]
+            | null
+          created_at?: string | null
+          equipment_id?: string | null
+          expected_return?: string | null
+          id?: string | null
+          notes?: string | null
+          quantity?: number | null
+          quantity_returned?: number | null
+          return_date?: string | null
+          return_notes?: string | null
+          returned_by?: string | null
+          team_name?: string | null
+        }
+        Update: {
+          borrower_name?: string | null
+          checkout_condition_counts?: Json | null
+          checkout_date?: string | null
+          condition_on_return?:
+            | Database["public"]["Enums"]["equipment_condition"]
+            | null
+          created_at?: string | null
+          equipment_id?: string | null
+          expected_return?: string | null
+          id?: string | null
+          notes?: string | null
+          quantity?: number | null
+          quantity_returned?: number | null
+          return_date?: string | null
+          return_notes?: string | null
+          returned_by?: string | null
+          team_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_log_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
