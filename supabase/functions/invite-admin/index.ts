@@ -40,9 +40,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Only master admin can invite admins" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 255) : "";
+    const password = typeof body.password === "string" ? body.password : "";
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(JSON.stringify({ error: "Invalid email format" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Validate password strength
+    if (password.length < 8 || password.length > 128) {
+      return new Response(JSON.stringify({ error: "Password must be between 8 and 128 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Try to create user; if already exists, look them up

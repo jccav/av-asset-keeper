@@ -16,16 +16,23 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const {
-      equipment_id,
-      pin,
-      condition_counts,
-      return_notes,
-      returned_by,
-    } = await req.json();
+    const body = await req.json();
+    const equipment_id = typeof body.equipment_id === "string" ? body.equipment_id.trim() : "";
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    const condition_counts = body.condition_counts;
+    const return_notes = typeof body.return_notes === "string" ? body.return_notes.trim().slice(0, 500) : null;
+    const returned_by = typeof body.returned_by === "string" ? body.returned_by.trim().slice(0, 100) : null;
 
     if (!equipment_id || !pin) {
       return new Response(JSON.stringify({ error: "equipment_id and pin required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(equipment_id)) {
+      return new Response(JSON.stringify({ error: "Invalid equipment_id format" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -36,10 +43,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!condition_counts || typeof condition_counts !== "object") {
-      return new Response(JSON.stringify({ error: "condition_counts required" }), {
+    if (!condition_counts || typeof condition_counts !== "object" || Array.isArray(condition_counts)) {
+      return new Response(JSON.stringify({ error: "condition_counts must be an object" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    const validConditions = ["excellent", "good", "fair", "damaged", "bad"];
+    for (const [key, val] of Object.entries(condition_counts)) {
+      if (!validConditions.includes(key) || typeof val !== "number" || !Number.isInteger(val) || val < 0) {
+        return new Response(JSON.stringify({ error: `Invalid condition_counts entry` }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const totalReturning = Object.values(condition_counts as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
