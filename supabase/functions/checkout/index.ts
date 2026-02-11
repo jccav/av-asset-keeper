@@ -16,40 +16,66 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const {
-      equipment_id,
-      borrower_name,
-      team_name,
-      expected_return,
-      notes,
-      pin,
-      condition_counts,
-      force_merge,
-    } = await req.json();
+    const body = await req.json();
+    const equipment_id = typeof body.equipment_id === "string" ? body.equipment_id.trim() : "";
+    const borrower_name = typeof body.borrower_name === "string" ? body.borrower_name.trim().slice(0, 100) : "";
+    const team_name = typeof body.team_name === "string" ? body.team_name.trim().slice(0, 100) : "";
+    const expected_return = typeof body.expected_return === "string" ? body.expected_return.trim() : null;
+    const notes = typeof body.notes === "string" ? body.notes.trim().slice(0, 500) : null;
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    const condition_counts = body.condition_counts;
+    const force_merge = !!body.force_merge;
 
     // Validate required fields
-    if (!equipment_id || !borrower_name || !team_name || !pin || pin.length !== 4) {
+    if (!equipment_id || !borrower_name || !team_name || !pin) {
       return new Response(JSON.stringify({ error: "Missing required fields (equipment_id, borrower_name, team_name, 4-digit pin)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!condition_counts || typeof condition_counts !== "object") {
-      return new Response(JSON.stringify({ error: "condition_counts required" }), {
+    // Validate PIN format
+    if (!/^\d{4}$/.test(pin)) {
+      return new Response(JSON.stringify({ error: "PIN must be exactly 4 digits" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(equipment_id)) {
+      return new Response(JSON.stringify({ error: "Invalid equipment_id format" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate expected_return date
+    if (expected_return) {
+      const d = new Date(expected_return);
+      if (isNaN(d.getTime()) || d < new Date() || d > new Date(Date.now() + 365 * 86400000)) {
+        return new Response(JSON.stringify({ error: "Expected return date must be a valid future date within 1 year" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Validate condition_counts
+    if (!condition_counts || typeof condition_counts !== "object" || Array.isArray(condition_counts)) {
+      return new Response(JSON.stringify({ error: "condition_counts must be an object" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const validConditions = ["excellent", "good", "fair", "damaged", "bad"];
+    for (const [key, val] of Object.entries(condition_counts)) {
+      if (!validConditions.includes(key) || typeof val !== "number" || !Number.isInteger(val) || val < 0) {
+        return new Response(JSON.stringify({ error: `Invalid condition_counts: key must be one of ${validConditions.join(",")} with non-negative integer values` }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const checkoutTotal = Object.values(condition_counts as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
     if (checkoutTotal < 1) {
       return new Response(JSON.stringify({ error: "Must check out at least 1 item" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Validate pin is numeric
-    if (!/^\d{4}$/.test(pin)) {
-      return new Response(JSON.stringify({ error: "PIN must be exactly 4 digits" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
