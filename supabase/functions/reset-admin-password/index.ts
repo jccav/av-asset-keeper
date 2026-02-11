@@ -37,8 +37,19 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!callerRole) {
-      return new Response(JSON.stringify({ error: "Only master admin can reset passwords" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Non-master admins can only reset their own password
+      const { data: adminRole } = await serviceClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", caller.id)
+        .maybeSingle();
+
+      if (!adminRole) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
+
+    const isMaster = !!callerRole;
 
     const body = await req.json();
     const targetUserId = typeof body.user_id === "string" ? body.user_id.trim() : "";
@@ -58,9 +69,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Password must be between 8 and 128 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Prevent resetting own password through this endpoint
-    if (targetUserId === caller.id) {
-      return new Response(JSON.stringify({ error: "Cannot reset your own password through this endpoint" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Non-master admins can only reset their own password
+    if (!isMaster && targetUserId !== caller.id) {
+      return new Response(JSON.stringify({ error: "You can only reset your own password" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Verify target is an admin (not arbitrary users)
