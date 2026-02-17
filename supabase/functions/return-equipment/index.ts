@@ -106,25 +106,7 @@ Deno.serve(async (req) => {
       ["good", 0]
     )[0];
 
-    // Update checkout log
-    const { error: logError } = await serviceClient
-      .from("checkout_log")
-      .update({
-        quantity_returned: newQtyReturned,
-        ...(fullyReturned ? { return_date: new Date().toISOString() } : {}),
-        condition_on_return: mainReturnCondition,
-        return_notes: return_notes || null,
-        returned_by: returned_by || log.borrower_name,
-      })
-      .eq("id", log.id);
-
-    if (logError) {
-      return new Response(JSON.stringify({ error: logError.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Update equipment
+    // Fetch equipment for computing new state
     const { data: eq } = await serviceClient
       .from("equipment")
       .select("quantity_available, total_quantity, condition_counts")
@@ -144,18 +126,22 @@ Deno.serve(async (req) => {
       ["good", 0]
     )[0];
 
-    const { error: eqError } = await serviceClient
-      .from("equipment")
-      .update({
-        quantity_available: restored,
-        is_available: true,
-        condition: mainCondition,
-        condition_counts: counts,
-      })
-      .eq("id", equipment_id);
+    // Atomic return via RPC
+    const { error: returnError } = await serviceClient.rpc("perform_return", {
+      p_checkout_id: log.id,
+      p_new_qty_returned: newQtyReturned,
+      p_fully_returned: fullyReturned,
+      p_condition_on_return: mainReturnCondition,
+      p_return_notes: return_notes || null,
+      p_returned_by: returned_by || log.borrower_name,
+      p_equipment_id: equipment_id,
+      p_new_eq_available: restored,
+      p_new_eq_condition: mainCondition,
+      p_new_eq_condition_counts: counts,
+    });
 
-    if (eqError) {
-      return new Response(JSON.stringify({ error: eqError.message }), {
+    if (returnError) {
+      return new Response(JSON.stringify({ error: "Failed to process return" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -164,7 +150,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: "An unexpected error occurred" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
