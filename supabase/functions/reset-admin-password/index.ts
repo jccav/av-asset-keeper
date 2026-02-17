@@ -65,8 +65,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "New password is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (newPassword.length < 8 || newPassword.length > 128) {
-      return new Response(JSON.stringify({ error: "Password must be between 8 and 128 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (newPassword.length < 12 || newPassword.length > 128) {
+      return new Response(JSON.stringify({ error: "Password must be between 12 and 128 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    {
+      const hasUpper = /[A-Z]/.test(newPassword);
+      const hasLower = /[a-z]/.test(newPassword);
+      const hasNumber = /[0-9]/.test(newPassword);
+      const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+      const complexity = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+      if (complexity < 3) {
+        return new Response(JSON.stringify({ error: "Password must contain at least 3 of: uppercase, lowercase, numbers, symbols" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     // Non-master admins can only reset their own password

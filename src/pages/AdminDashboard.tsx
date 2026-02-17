@@ -161,7 +161,7 @@ export default function AdminDashboard() {
                          </Badge>
                        </p>
                        <p className="text-sm text-muted-foreground">
-                         {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin || "—"}</code>
+                         {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin ? "••••" : "—"}</code>
                        </p>
                        {c.notes && (
                          <p className="text-sm text-muted-foreground mt-1">📝 Checkout notes: {c.notes}</p>

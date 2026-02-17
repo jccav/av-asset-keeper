@@ -51,7 +51,7 @@ export default function SetupPage() {
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Min 6 characters" />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Min 12 chars, 3 of: upper/lower/number/symbol" />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating..." : "Create Master Admin"}

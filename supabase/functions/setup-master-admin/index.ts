@@ -41,8 +41,18 @@ Deno.serve(async (req) => {
     if (!emailRegex.test(email)) {
       return new Response(JSON.stringify({ error: "Invalid email format" }), { status: 400, headers: corsHeaders });
     }
-    if (password.length < 8 || password.length > 128) {
-      return new Response(JSON.stringify({ error: "Password must be between 8 and 128 characters" }), { status: 400, headers: corsHeaders });
+    if (password.length < 12 || password.length > 128) {
+      return new Response(JSON.stringify({ error: "Password must be between 12 and 128 characters" }), { status: 400, headers: corsHeaders });
+    }
+    {
+      const hasUpper = /[A-Z]/.test(password);
+      const hasLower = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      const complexity = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+      if (complexity < 3) {
+        return new Response(JSON.stringify({ error: "Password must contain at least 3 of: uppercase, lowercase, numbers, symbols" }), { status: 400, headers: corsHeaders });
+      }
     }
 
     // Create user
