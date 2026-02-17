@@ -79,7 +79,7 @@ export default function AdminHistory() {
                   <TableCell>{log.team_name || "—"}</TableCell>
                   <TableCell>{log.quantity ?? 1}</TableCell>
                   <TableCell>{log.quantity_returned ?? 0}</TableCell>
-                  <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin || "—"}</code></TableCell>
+                  <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin ? "••••" : "—"}</code></TableCell>
                   <TableCell className="max-w-[200px] truncate" title={log.notes || ""}>{log.notes || "—"}</TableCell>
                   <TableCell className="max-w-[200px] truncate" title={log.return_notes || ""}>{log.return_notes || "—"}</TableCell>
                   <TableCell>{format(new Date(log.checkout_date), "MMM d, yyyy h:mm a")}</TableCell>
