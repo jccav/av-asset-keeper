@@ -56,12 +56,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Target user is not an admin" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Transfer: update target to master_admin, demote caller to admin
-    await serviceClient.from("user_roles").update({ role: "master_admin" }).eq("user_id", new_master_id);
-    await serviceClient.from("user_roles").update({ role: "admin" }).eq("user_id", caller.id);
+    // Atomic transfer via RPC
+    const { error: transferError } = await serviceClient.rpc("transfer_master_admin", {
+      old_master: caller.id,
+      new_master: new_master_id,
+    });
+
+    if (transferError) {
+      return new Response(JSON.stringify({ error: "Failed to transfer master admin role" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "An unexpected error occurred" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

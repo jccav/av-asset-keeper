@@ -129,6 +129,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Compute new equipment state
+    const counts = { ...eqCounts };
+    for (const [cond, qty] of Object.entries(condition_counts as Record<string, number>)) {
+      if (qty > 0) counts[cond] = Math.max(0, (counts[cond] ?? 0) - qty);
+    }
+    const newAvailable = current.quantity_available - checkoutTotal;
+    const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
+
     if (force_merge) {
       // Find existing checkout to merge into
       const { data: existing } = await serviceClient
@@ -154,69 +162,50 @@ Deno.serve(async (req) => {
         if (qty > 0) mergedCounts[cond] = (mergedCounts[cond] ?? 0) + qty;
       }
 
-      const { error: mergeErr } = await serviceClient
-        .from("checkout_log")
-        .update({
-          quantity: mergeTarget.quantity + checkoutTotal,
-          checkout_condition_counts: mergedCounts,
-          notes: notes ? (mergeTarget.notes ? `${mergeTarget.notes}; ${notes}` : notes) : mergeTarget.notes,
-        })
-        .eq("id", mergeTarget.id);
+      const { error: mergeErr } = await serviceClient.rpc("perform_checkout_merge", {
+        p_checkout_id: mergeTarget.id,
+        p_new_quantity: mergeTarget.quantity + checkoutTotal,
+        p_merged_condition_counts: mergedCounts,
+        p_notes: notes ? (mergeTarget.notes ? `${mergeTarget.notes}; ${notes}` : notes) : mergeTarget.notes,
+        p_equipment_id: equipment_id,
+        p_new_eq_available: newAvailable,
+        p_new_eq_condition: mainCondition,
+        p_new_eq_condition_counts: counts,
+      });
 
       if (mergeErr) {
-        return new Response(JSON.stringify({ error: mergeErr.message }), {
+        return new Response(JSON.stringify({ error: "Failed to process checkout merge" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     } else {
-      // New checkout record
-      const { error: logError } = await serviceClient.from("checkout_log").insert({
-        equipment_id,
-        borrower_name,
-        team_name: team_name || null,
-        expected_return: expected_return || null,
-        notes: notes || null,
-        pin,
-        quantity: checkoutTotal,
-        checkout_condition_counts: condition_counts,
+      // Atomic new checkout via RPC
+      const { error: checkoutErr } = await serviceClient.rpc("perform_checkout", {
+        p_equipment_id: equipment_id,
+        p_borrower_name: borrower_name,
+        p_team_name: team_name || null,
+        p_expected_return: expected_return || null,
+        p_notes: notes || null,
+        p_pin: pin,
+        p_quantity: checkoutTotal,
+        p_checkout_condition_counts: condition_counts,
+        p_new_eq_available: newAvailable,
+        p_new_eq_condition: mainCondition,
+        p_new_eq_condition_counts: counts,
       });
 
-      if (logError) {
-        return new Response(JSON.stringify({ error: logError.message }), {
+      if (checkoutErr) {
+        return new Response(JSON.stringify({ error: "Failed to process checkout" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-    }
-
-    // Update equipment counts
-    const counts = { ...eqCounts };
-    for (const [cond, qty] of Object.entries(condition_counts as Record<string, number>)) {
-      if (qty > 0) counts[cond] = Math.max(0, (counts[cond] ?? 0) - qty);
-    }
-    const newAvailable = current.quantity_available - checkoutTotal;
-    const mainCondition = Object.entries(counts).reduce((a, b) => (b[1] > a[1] ? b : a), ["good", 0])[0];
-
-    const { error: eqError } = await serviceClient
-      .from("equipment")
-      .update({
-        quantity_available: newAvailable,
-        is_available: newAvailable > 0,
-        condition: mainCondition,
-        condition_counts: counts,
-      })
-      .eq("id", equipment_id);
-
-    if (eqError) {
-      return new Response(JSON.stringify({ error: eqError.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: "An unexpected error occurred" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

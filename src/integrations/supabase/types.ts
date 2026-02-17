@@ -199,6 +199,54 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      perform_checkout: {
+        Args: {
+          p_borrower_name: string
+          p_checkout_condition_counts: Json
+          p_equipment_id: string
+          p_expected_return: string
+          p_new_eq_available: number
+          p_new_eq_condition: string
+          p_new_eq_condition_counts: Json
+          p_notes: string
+          p_pin: string
+          p_quantity: number
+          p_team_name: string
+        }
+        Returns: undefined
+      }
+      perform_checkout_merge: {
+        Args: {
+          p_checkout_id: string
+          p_equipment_id: string
+          p_merged_condition_counts: Json
+          p_new_eq_available: number
+          p_new_eq_condition: string
+          p_new_eq_condition_counts: Json
+          p_new_quantity: number
+          p_notes: string
+        }
+        Returns: undefined
+      }
+      perform_return: {
+        Args: {
+          p_checkout_id: string
+          p_condition_on_return: string
+          p_equipment_id: string
+          p_fully_returned: boolean
+          p_new_eq_available: number
+          p_new_eq_condition: string
+          p_new_eq_condition_counts: Json
+          p_new_qty_returned: number
+          p_return_notes: string
+          p_returned_by: string
+        }
+        Returns: undefined
+      }
+      transfer_master_admin: {
+        Args: { new_master: string; old_master: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "master_admin"
