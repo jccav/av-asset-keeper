@@ -107,8 +107,8 @@ export default function AdminDashboard() {
   const forceReturnSum = Object.values(forceReturnConditionCounts).reduce((a, b) => a + b, 0);
 
   const total = equipment.reduce((sum, e) => sum + e.total_quantity, 0);
-  const available = equipment.reduce((sum, e) => sum + e.quantity_available, 0);
-  const reserved = equipment.reduce((sum, e) => sum + ((e as any).quantity_reserved ?? 0), 0);
+  const available = equipment.reduce((sum, e) => sum + (e.is_reserved ? 0 : e.quantity_available), 0);
+  const reserved = equipment.reduce((sum, e) => sum + (e.is_reserved ? e.total_quantity : ((e as any).quantity_reserved ?? 0)), 0);
   const checkedOut = total - available - reserved;
   const damaged = equipment.reduce((sum, e) => {
     const counts = (e as any).condition_counts as Record<string, number> | null;
