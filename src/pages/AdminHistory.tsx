@@ -41,7 +41,10 @@ export default function AdminHistory() {
   const filtered = logs.filter((l: any) =>
     l.borrower_name?.toLowerCase().includes(search.toLowerCase()) ||
     l.team_name?.toLowerCase().includes(search.toLowerCase()) ||
-    l.equipment?.name?.toLowerCase().includes(search.toLowerCase())
+    l.equipment?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    l.contact_number?.toLowerCase().includes(search.toLowerCase()) ||
+    l.location_used?.toLowerCase().includes(search.toLowerCase()) ||
+    l.av_member?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -59,6 +62,9 @@ export default function AdminHistory() {
                 <TableHead>Equipment</TableHead>
                 <TableHead>Borrower</TableHead>
                 <TableHead>On Behalf Of</TableHead>
+                <TableHead>Contact #</TableHead>
+                <TableHead>Location Used</TableHead>
+                <TableHead>AV Member</TableHead>
                 <TableHead>Qty Out</TableHead>
                 <TableHead>Qty Returned</TableHead>
                 <TableHead>PIN</TableHead>
@@ -77,6 +83,9 @@ export default function AdminHistory() {
                   <TableCell className="font-medium">{log.equipment?.name ?? "—"}</TableCell>
                   <TableCell>{log.borrower_name}</TableCell>
                   <TableCell>{log.team_name || "—"}</TableCell>
+                  <TableCell>{log.contact_number || "—"}</TableCell>
+                  <TableCell>{log.location_used || "—"}</TableCell>
+                  <TableCell>{log.av_member || "—"}</TableCell>
                   <TableCell>{log.quantity ?? 1}</TableCell>
                   <TableCell>{log.quantity_returned ?? 0}</TableCell>
                   <TableCell><code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">{log.pin ? "••••" : "—"}</code></TableCell>
@@ -122,7 +131,7 @@ export default function AdminHistory() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={13} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={16} className="py-8 text-center text-muted-foreground">No history found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

@@ -50,6 +50,9 @@ export default function Index() {
   const [checkoutPin, setCheckoutPin] = useState("");
   const [checkoutQty, setCheckoutQty] = useState(1);
   const [teamName, setTeamName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [locationUsed, setLocationUsed] = useState("");
+  const [avMember, setAvMember] = useState("");
   const [expectedReturn, setExpectedReturn] = useState("");
   const [checkoutNotes, setCheckoutNotes] = useState("");
   const [checkoutConditionCounts, setCheckoutConditionCounts] = useState<Record<string, number>>({ good: 1 });
@@ -88,6 +91,9 @@ export default function Index() {
           pin: checkoutPin,
           condition_counts: checkoutConditionCounts,
           force_merge: !!forceMerge,
+          contact_number: contactNumber || null,
+          location_used: locationUsed || null,
+          av_member: avMember || null,
         },
       });
       if (error) throw error;
@@ -136,6 +142,9 @@ export default function Index() {
     setCheckoutPin("");
     setCheckoutQty(1);
     setTeamName("");
+    setContactNumber("");
+    setLocationUsed("");
+    setAvMember("");
     setExpectedReturn("");
     setCheckoutNotes("");
     setCheckoutConditionCounts({ good: 1 });
@@ -329,6 +338,18 @@ export default function Index() {
             <div>
               <Label htmlFor="team">Who are you checking this out on behalf of? *</Label>
               <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. Production Team, Pastor John, etc." />
+            </div>
+            <div>
+              <Label htmlFor="contact">Contact # </Label>
+              <Input id="contact" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} placeholder="e.g. 555-123-4567" />
+            </div>
+            <div>
+              <Label htmlFor="location">Location Used</Label>
+              <Input id="location" value={locationUsed} onChange={(e) => setLocationUsed(e.target.value)} placeholder="e.g. Main Sanctuary, Room 201" />
+            </div>
+            <div>
+              <Label htmlFor="av-member">AV Member</Label>
+              <Input id="av-member" value={avMember} onChange={(e) => setAvMember(e.target.value)} placeholder="AV team member handling this" />
             </div>
             <div>
               <Label htmlFor="pin">4-Digit PIN * <span className="text-xs text-muted-foreground">(you'll need this to return)</span></Label>
