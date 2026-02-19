@@ -1,0 +1,1 @@
+ALTER TABLE public.equipment ADD COLUMN quantity_reserved integer NOT NULL DEFAULT 0;
