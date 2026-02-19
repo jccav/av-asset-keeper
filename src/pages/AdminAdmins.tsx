@@ -203,12 +203,12 @@ export default function AdminAdmins() {
             </div>
             <div>
               <Label>Temporary Password *</Label>
-              <Input type="password" value={invitePassword} onChange={(e) => setInvitePassword(e.target.value)} placeholder="Min 6 characters" />
+              <Input type="password" value={invitePassword} onChange={(e) => setInvitePassword(e.target.value)} placeholder="Min 12 chars, 3 of: upper, lower, number, symbol" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={() => inviteMutation.mutate()} disabled={!inviteEmail || !invitePassword || inviteMutation.isPending}>
+            <Button onClick={() => inviteMutation.mutate()} disabled={!inviteEmail || invitePassword.length < 12 || inviteMutation.isPending}>
               {inviteMutation.isPending ? "Inviting..." : "Invite"}
             </Button>
           </DialogFooter>
