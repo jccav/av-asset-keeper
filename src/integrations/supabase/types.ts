@@ -102,6 +102,7 @@ export type Database = {
           created_at: string
           id: string
           is_available: boolean
+          is_reserved: boolean
           is_retired: boolean
           name: string
           notes: string | null
@@ -116,6 +117,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_available?: boolean
+          is_reserved?: boolean
           is_retired?: boolean
           name: string
           notes?: string | null
@@ -130,6 +132,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_available?: boolean
+          is_reserved?: boolean
           is_retired?: boolean
           name?: string
           notes?: string | null

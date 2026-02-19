@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Archive, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Archive, RotateCcw, Lock, Unlock } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -45,7 +45,16 @@ export default function AdminInventory() {
   const { data: equipment = [] } = useQuery({
     queryKey: ["admin-equipment"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("equipment").select("*").eq("is_retired", false).order("name");
+      const { data, error } = await supabase.from("equipment").select("*").eq("is_retired", false).eq("is_reserved", false).order("name");
+      if (error) throw error;
+      return data as Equipment[];
+    },
+  });
+
+  const { data: reservedEquipment = [] } = useQuery({
+    queryKey: ["admin-equipment-reserved"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipment").select("*").eq("is_retired", false).eq("is_reserved", true).order("name");
       if (error) throw error;
       return data as Equipment[];
     },
@@ -62,6 +71,7 @@ export default function AdminInventory() {
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-equipment"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-equipment-reserved"] });
     queryClient.invalidateQueries({ queryKey: ["admin-equipment-archived"] });
   };
 
@@ -109,8 +119,20 @@ export default function AdminInventory() {
   });
 
   const restoreMutation = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").update({ is_retired: false }).eq("id", id); if (error) throw error; },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").update({ is_retired: false, is_reserved: false }).eq("id", id); if (error) throw error; },
     onSuccess: () => { invalidateAll(); toast({ title: "Restored", description: "Item restored to active inventory." }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const reserveMutation = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").update({ is_reserved: true }).eq("id", id); if (error) throw error; },
+    onSuccess: () => { invalidateAll(); toast({ title: "Reserved", description: "Item moved to reserved. It won't appear on the public page." }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const unreserveMutation = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("equipment").update({ is_reserved: false }).eq("id", id); if (error) throw error; },
+    onSuccess: () => { invalidateAll(); toast({ title: "Unreserved", description: "Item is now active and visible on the public page." }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -124,6 +146,7 @@ export default function AdminInventory() {
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   const filtered = equipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredReserved = reservedEquipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
   const filteredArchived = archivedEquipment.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -141,6 +164,7 @@ export default function AdminInventory() {
       <Tabs defaultValue="active">
         <TabsList className="mb-4">
           <TabsTrigger value="active">Active ({equipment.length})</TabsTrigger>
+          <TabsTrigger value="reserved">Reserved ({reservedEquipment.length})</TabsTrigger>
           <TabsTrigger value="archived">Archived ({archivedEquipment.length})</TabsTrigger>
         </TabsList>
 
@@ -185,8 +209,9 @@ export default function AdminInventory() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => retireMutation.mutate(item.id)}><Archive className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => reserveMutation.mutate(item.id)} title="Reserve — hide from public"><Lock className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => retireMutation.mutate(item.id)} title="Archive"><Archive className="h-4 w-4" /></Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
@@ -208,6 +233,67 @@ export default function AdminInventory() {
                   ))}
                   {filtered.length === 0 && (
                     <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No equipment found</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reserved">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredReserved.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
+                      <TableCell>{item.quantity_available} / {item.total_quantity}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries((item as any).condition_counts ?? {}).filter(([, v]) => (v as number) > 0).map(([k, v]) => (
+                            <Badge key={k} variant={k === "excellent" || k === "good" ? "default" : k === "fair" ? "secondary" : "destructive"} className="text-xs">
+                              {v as number} {k.charAt(0).toUpperCase() + k.slice(1)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => unreserveMutation.mutate(item.id)} title="Make active"><Unlock className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => retireMutation.mutate(item.id)} title="Archive"><Archive className="h-4 w-4" /></Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive" title="Delete permanently"><Trash2 className="h-4 w-4" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete "{item.name}". This action cannot be undone.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteMutation.mutate(item.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredReserved.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No reserved equipment</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
