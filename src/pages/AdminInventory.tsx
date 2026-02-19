@@ -406,12 +406,12 @@ export default function AdminInventory() {
                 <Input type="number" min={0} max={form.total_quantity} value={form.quantity_reserved} onChange={(e) => {
                   const reserved = Math.max(0, Math.min(form.total_quantity, parseInt(e.target.value) || 0));
                   const available = Math.min(form.quantity_available, form.total_quantity - reserved);
-                  setForm({ ...form, quantity_reserved: reserved, quantity_available: available });
+                  setForm({ ...form, quantity_reserved: reserved, quantity_available: available, reserved_condition_counts: { good: reserved } });
                 }} />
               </div>
             </div>
             <div>
-              <Label className="mb-2 block">Condition Breakdown</Label>
+              <Label className="mb-2 block">Available Condition Breakdown</Label>
               <div className="space-y-2 rounded-md border p-3">
                 {CONDITIONS.map((c) => (
                   <div key={c} className="flex items-center gap-3">
@@ -430,8 +430,8 @@ export default function AdminInventory() {
                 ))}
                 {(() => {
                   const sum = Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0;
-                  return sum !== form.total_quantity ? (
-                    <p className="text-xs text-destructive mt-1">Condition counts ({sum}) must equal total quantity ({form.total_quantity})</p>
+                  return sum !== form.quantity_available ? (
+                    <p className="text-xs text-destructive mt-1">Condition counts ({sum}) must equal available quantity ({form.quantity_available})</p>
                   ) : null;
                 })()}
               </div>
@@ -447,11 +447,11 @@ export default function AdminInventory() {
                       <Input
                         type="number"
                         min={0}
-                        max={(form.condition_counts[c] ?? 0)}
+                        max={form.quantity_reserved}
                         className="h-8 w-20"
                         value={form.reserved_condition_counts[c] ?? 0}
                         onChange={(e) => {
-                          const val = Math.max(0, Math.min(form.condition_counts[c] ?? 0, parseInt(e.target.value) || 0));
+                          const val = Math.max(0, Math.min(form.quantity_reserved, parseInt(e.target.value) || 0));
                           setForm({ ...form, reserved_condition_counts: { ...form.reserved_condition_counts, [c]: val } });
                         }}
                       />
@@ -474,7 +474,7 @@ export default function AdminInventory() {
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={
               !form.name || saveMutation.isPending ||
-              (Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.total_quantity ||
+              (Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.quantity_available ||
               (form.quantity_reserved > 0 && (Object.values(form.reserved_condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.quantity_reserved)
             }>
               {saveMutation.isPending ? "Saving..." : editing ? "Update" : "Add"}
