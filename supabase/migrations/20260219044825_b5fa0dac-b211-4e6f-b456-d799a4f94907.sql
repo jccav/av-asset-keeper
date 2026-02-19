@@ -1,0 +1,1 @@
+ALTER TABLE public.equipment ADD COLUMN reserved_condition_counts jsonb NOT NULL DEFAULT '{}'::jsonb;

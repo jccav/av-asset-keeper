@@ -108,6 +108,7 @@ export type Database = {
           notes: string | null
           quantity_available: number
           quantity_reserved: number
+          reserved_condition_counts: Json
           total_quantity: number
           updated_at: string
         }
@@ -124,6 +125,7 @@ export type Database = {
           notes?: string | null
           quantity_available?: number
           quantity_reserved?: number
+          reserved_condition_counts?: Json
           total_quantity?: number
           updated_at?: string
         }
@@ -140,6 +142,7 @@ export type Database = {
           notes?: string | null
           quantity_available?: number
           quantity_reserved?: number
+          reserved_condition_counts?: Json
           total_quantity?: number
           updated_at?: string
         }
