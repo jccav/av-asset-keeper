@@ -392,13 +392,14 @@ export default function AdminInventory() {
                   const total = Math.max(1, parseInt(e.target.value) || 1);
                   const reserved = Math.min(form.quantity_reserved, total);
                   const available = Math.min(form.quantity_available, total - reserved);
-                  setForm({ ...form, total_quantity: total, quantity_reserved: reserved, quantity_available: available });
+                  setForm({ ...form, total_quantity: total, quantity_reserved: reserved, quantity_available: available, condition_counts: { good: available }, reserved_condition_counts: { good: reserved } });
                 }} />
               </div>
               <div>
                 <Label>Available</Label>
                 <Input type="number" min={0} max={form.total_quantity - form.quantity_reserved} value={form.quantity_available} onChange={(e) => {
-                  setForm({ ...form, quantity_available: Math.max(0, Math.min(form.total_quantity - form.quantity_reserved, parseInt(e.target.value) || 0)) });
+                  const avail = Math.max(0, Math.min(form.total_quantity - form.quantity_reserved, parseInt(e.target.value) || 0));
+                  setForm({ ...form, quantity_available: avail, condition_counts: { good: avail } });
                 }} />
               </div>
               <div>
@@ -406,7 +407,7 @@ export default function AdminInventory() {
                 <Input type="number" min={0} max={form.total_quantity} value={form.quantity_reserved} onChange={(e) => {
                   const reserved = Math.max(0, Math.min(form.total_quantity, parseInt(e.target.value) || 0));
                   const available = Math.min(form.quantity_available, form.total_quantity - reserved);
-                  setForm({ ...form, quantity_reserved: reserved, quantity_available: available, reserved_condition_counts: { good: reserved } });
+                  setForm({ ...form, quantity_reserved: reserved, quantity_available: available, condition_counts: { good: available }, reserved_condition_counts: { good: reserved } });
                 }} />
               </div>
             </div>
