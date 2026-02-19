@@ -308,7 +308,7 @@ export default function Index() {
                   )}
                   <div className="mt-2 flex gap-2">
                     {item.quantity_available > 0 ? (
-                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); const counts = ((item as any).condition_counts ?? {}) as Record<string, number>; const hasAny = Object.values(counts).reduce((a, b) => a + b, 0) > 0; setCheckoutConditionCounts(hasAny ? { ...counts } : { good: 1 }); }}>
+                      <Button className="w-full gap-2" onClick={() => { setCheckoutItem(item); const rawCounts = ((item as any).condition_counts ?? {}) as Record<string, number>; const rawTotal = Object.values(rawCounts).reduce((a, b) => a + b, 0); const reserved = (item as any).quantity_reserved ?? 0; const visibleTotal = rawTotal - reserved; const scaledCounts: Record<string, number> = {}; if (rawTotal > 0 && visibleTotal > 0) { let assigned = 0; const entries = Object.entries(rawCounts).filter(([, v]) => v > 0); entries.forEach(([k, v], i) => { if (i === entries.length - 1) { scaledCounts[k] = visibleTotal - assigned; } else { const share = Math.round((v / rawTotal) * visibleTotal); scaledCounts[k] = share; assigned += share; } }); } else { scaledCounts.good = 1; } setCheckoutConditionCounts(Object.values(scaledCounts).reduce((a, b) => a + b, 0) > 0 ? scaledCounts : { good: 1 }); }}>
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
                     ) : null}
@@ -365,7 +365,12 @@ export default function Index() {
               <Label className="mb-2 block">Condition of Items Being Checked Out</Label>
               <div className="space-y-2 rounded-md border p-3">
                 {(["excellent", "good", "fair", "bad", "damaged"] as const).map((c) => {
-                  const availForCondition = ((checkoutItem as any)?.condition_counts ?? {})[c] ?? 0;
+                  const rawCounts = ((checkoutItem as any)?.condition_counts ?? {}) as Record<string, number>;
+                  const rawTotal = Object.values(rawCounts).reduce((a, b) => a + b, 0);
+                  const reserved = (checkoutItem as any)?.quantity_reserved ?? 0;
+                  const visibleTotal = Math.max(0, rawTotal - reserved);
+                  const rawVal = rawCounts[c] ?? 0;
+                  const availForCondition = rawTotal > 0 ? Math.round((rawVal / rawTotal) * visibleTotal) : 0;
                   return (
                   <div key={c} className="flex items-center gap-3">
                     <span className="w-24 text-sm capitalize">{c}</span>
