@@ -2,40 +2,53 @@ name: Deploy Loveable React Site to GitHub Pages
 
 on:
   push:
-    branches: ["main"]   # runs on every push to main
-  workflow_dispatch:      # allows manual runs from Actions tab
+    branches: ["main"]
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: checkout your code
+      # 1️⃣ Checkout repo
       - uses: actions/checkout@v4
 
-      # Step 2: set up Node.js
+      # 2️⃣ Setup Node
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
-      # Step 3: install dependencies
+      # 3️⃣ Install deps
       - run: npm install
 
-      # Step 4: build the Loveable React app
+      # 4️⃣ Build Vite app
       - run: npm run build
 
-      # Step 5: upload the build output to Pages
+      # 5️⃣ Setup GitHub Pages
+      - uses: actions/configure-pages@v5
+
+      # 6️⃣ Upload built site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist  # Vite builds into dist/
+          path: ./dist
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
