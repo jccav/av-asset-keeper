@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     const condition_counts = body.condition_counts;
     const return_notes = typeof body.return_notes === "string" ? body.return_notes.trim().slice(0, 500) : null;
     const returned_by = typeof body.returned_by === "string" ? body.returned_by.trim().slice(0, 100) : null;
+    const av_member = typeof body.av_member === "string" ? body.av_member.trim().slice(0, 100) : null;
 
     if (!equipment_id || !pin) {
       return new Response(JSON.stringify({ error: "equipment_id and pin required" }), {

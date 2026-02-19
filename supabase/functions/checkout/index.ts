@@ -25,6 +25,9 @@ Deno.serve(async (req) => {
     const pin = typeof body.pin === "string" ? body.pin.trim() : "";
     const condition_counts = body.condition_counts;
     const force_merge = !!body.force_merge;
+    const contact_number = typeof body.contact_number === "string" ? body.contact_number.trim().slice(0, 30) : null;
+    const location_used = typeof body.location_used === "string" ? body.location_used.trim().slice(0, 200) : null;
+    const av_member = typeof body.av_member === "string" ? body.av_member.trim().slice(0, 100) : null;
 
     // Validate required fields
     if (!equipment_id || !borrower_name || !team_name || !pin) {
@@ -192,6 +195,9 @@ Deno.serve(async (req) => {
         p_new_eq_available: newAvailable,
         p_new_eq_condition: mainCondition,
         p_new_eq_condition_counts: counts,
+        p_contact_number: contact_number,
+        p_location_used: location_used,
+        p_av_member: av_member,
       });
 
       if (checkoutErr) {

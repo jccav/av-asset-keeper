@@ -160,9 +160,15 @@ export default function AdminDashboard() {
                            Qty: {remaining}{c.quantity_returned > 0 ? ` (${c.quantity_returned} returned)` : ""}
                          </Badge>
                        </p>
-                       <p className="text-sm text-muted-foreground">
-                         {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin ? "••••" : "—"}</code>
-                       </p>
+                        <p className="text-sm text-muted-foreground">
+                          {c.borrower_name}{c.team_name ? ` · ${c.team_name}` : ""}{c.contact_number ? ` · ${c.contact_number}` : ""} · PIN: <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{c.pin ? "••••" : "—"}</code>
+                        </p>
+                        {c.location_used && (
+                          <p className="text-sm text-muted-foreground">📍 Location: {c.location_used}</p>
+                        )}
+                        {c.av_member && (
+                          <p className="text-sm text-muted-foreground">👤 AV Member: {c.av_member}</p>
+                        )}
                        {c.notes && (
                          <p className="text-sm text-muted-foreground mt-1">📝 Checkout notes: {c.notes}</p>
                        )}

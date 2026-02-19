@@ -208,22 +208,42 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
-      perform_checkout: {
-        Args: {
-          p_borrower_name: string
-          p_checkout_condition_counts: Json
-          p_equipment_id: string
-          p_expected_return: string
-          p_new_eq_available: number
-          p_new_eq_condition: string
-          p_new_eq_condition_counts: Json
-          p_notes: string
-          p_pin: string
-          p_quantity: number
-          p_team_name: string
-        }
-        Returns: undefined
-      }
+      perform_checkout:
+        | {
+            Args: {
+              p_borrower_name: string
+              p_checkout_condition_counts: Json
+              p_equipment_id: string
+              p_expected_return: string
+              p_new_eq_available: number
+              p_new_eq_condition: string
+              p_new_eq_condition_counts: Json
+              p_notes: string
+              p_pin: string
+              p_quantity: number
+              p_team_name: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_av_member?: string
+              p_borrower_name: string
+              p_checkout_condition_counts: Json
+              p_contact_number?: string
+              p_equipment_id: string
+              p_expected_return: string
+              p_location_used?: string
+              p_new_eq_available: number
+              p_new_eq_condition: string
+              p_new_eq_condition_counts: Json
+              p_notes: string
+              p_pin: string
+              p_quantity: number
+              p_team_name: string
+            }
+            Returns: undefined
+          }
       perform_checkout_merge: {
         Args: {
           p_checkout_id: string
