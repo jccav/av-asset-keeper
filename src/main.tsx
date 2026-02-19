@@ -4,7 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <BrowserRouter basename="/jccavtracker">
+  <BrowserRouter basename="/av-asset-keeper">
     <App />
   </BrowserRouter>
 );
