@@ -68,6 +68,7 @@ export default function Index() {
         .from("equipment")
         .select("*")
         .eq("is_retired", false)
+        .eq("is_reserved", false)
         .order("name");
       if (error) throw error;
       return data as Equipment[];
