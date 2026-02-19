@@ -16,16 +16,19 @@ export type Database = {
     Tables: {
       checkout_log: {
         Row: {
+          av_member: string | null
           borrower_name: string
           checkout_condition_counts: Json | null
           checkout_date: string
           condition_on_return:
             | Database["public"]["Enums"]["equipment_condition"]
             | null
+          contact_number: string | null
           created_at: string
           equipment_id: string
           expected_return: string | null
           id: string
+          location_used: string | null
           notes: string | null
           pin: string | null
           quantity: number
@@ -36,16 +39,19 @@ export type Database = {
           team_name: string | null
         }
         Insert: {
+          av_member?: string | null
           borrower_name: string
           checkout_condition_counts?: Json | null
           checkout_date?: string
           condition_on_return?:
             | Database["public"]["Enums"]["equipment_condition"]
             | null
+          contact_number?: string | null
           created_at?: string
           equipment_id: string
           expected_return?: string | null
           id?: string
+          location_used?: string | null
           notes?: string | null
           pin?: string | null
           quantity?: number
@@ -56,16 +62,19 @@ export type Database = {
           team_name?: string | null
         }
         Update: {
+          av_member?: string | null
           borrower_name?: string
           checkout_condition_counts?: Json | null
           checkout_date?: string
           condition_on_return?:
             | Database["public"]["Enums"]["equipment_condition"]
             | null
+          contact_number?: string | null
           created_at?: string
           equipment_id?: string
           expected_return?: string | null
           id?: string
+          location_used?: string | null
           notes?: string | null
           pin?: string | null
           quantity?: number
