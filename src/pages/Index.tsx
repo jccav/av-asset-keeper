@@ -275,7 +275,7 @@ export default function Index() {
                     <Badge
                       className={item.quantity_available > 0 ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}
                     >
-                      {item.quantity_available > 0 ? `${item.quantity_available} / ${item.total_quantity} Available` : "All Checked Out"}
+                      {item.quantity_available > 0 ? `${item.quantity_available} / ${item.total_quantity - ((item as any).quantity_reserved ?? 0)} Available` : "All Checked Out"}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -327,7 +327,7 @@ export default function Index() {
             <DialogTitle>Check Out: {checkoutItem?.name}</DialogTitle>
             <DialogDescription>
               {checkoutItem?.quantity_available !== undefined
-                ? `${checkoutItem.quantity_available} of ${checkoutItem.total_quantity} available.`
+                ? `${checkoutItem.quantity_available} of ${checkoutItem.total_quantity - ((checkoutItem as any).quantity_reserved ?? 0)} available.`
                 : "Fill in your details to sign out this equipment."}
             </DialogDescription>
           </DialogHeader>
