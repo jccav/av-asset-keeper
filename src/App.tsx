@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+
 import Index from "./pages/Index";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -22,18 +23,49 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+
+        {/* ✅ IMPORTANT FIX FOR GITHUB PAGES */}
+        <BrowserRouter basename="/av-asset-keeper">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/setup" element={<Setup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-            <Route path="/admin/inventory" element={<AdminLayout><AdminInventory /></AdminLayout>} />
-            <Route path="/admin/history" element={<AdminLayout><AdminHistory /></AdminLayout>} />
-            <Route path="/admin/admins" element={<AdminLayout><AdminAdmins /></AdminLayout>} />
+            <Route
+              path="/admin"
+              element={
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/inventory"
+              element={
+                <AdminLayout>
+                  <AdminInventory />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/history"
+              element={
+                <AdminLayout>
+                  <AdminHistory />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/admins"
+              element={
+                <AdminLayout>
+                  <AdminAdmins />
+                </AdminLayout>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
