@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Package, CheckCircle, AlertTriangle, ArrowRightLeft, Archive, Undo2 } from "lucide-react";
+import { Package, CheckCircle, AlertTriangle, ArrowRightLeft, Archive, Undo2, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -108,7 +108,8 @@ export default function AdminDashboard() {
 
   const total = equipment.reduce((sum, e) => sum + e.total_quantity, 0);
   const available = equipment.reduce((sum, e) => sum + e.quantity_available, 0);
-  const checkedOut = total - available;
+  const reserved = equipment.reduce((sum, e) => sum + ((e as any).quantity_reserved ?? 0), 0);
+  const checkedOut = total - available - reserved;
   const damaged = equipment.reduce((sum, e) => {
     const counts = (e as any).condition_counts as Record<string, number> | null;
     if (counts) return sum + (counts.damaged ?? 0) + (counts.bad ?? 0);
@@ -119,6 +120,7 @@ export default function AdminDashboard() {
     { label: "Total Items", value: total, icon: Package, color: "text-primary" },
     { label: "Available", value: available, icon: CheckCircle, color: "text-success" },
     { label: "Checked Out", value: checkedOut, icon: ArrowRightLeft, color: "text-warning" },
+    { label: "Reserved", value: reserved, icon: Lock, color: "text-blue-500" },
     { label: "Damaged", value: damaged, icon: AlertTriangle, color: "text-destructive" },
     { label: "Archived", value: archivedCount, icon: Archive, color: "text-muted-foreground" },
   ];
@@ -126,7 +128,7 @@ export default function AdminDashboard() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold">Dashboard</h1>
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{/* 6 cards in 3 cols */}
         {stats.map((s) => (
           <Card key={s.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
