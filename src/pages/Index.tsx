@@ -285,7 +285,12 @@ export default function Index() {
                     {(["damaged", "bad", "fair", "good", "excellent"] as const)
                       .filter((k) => (((item as any).condition_counts ?? {}) as Record<string, number>)[k] > 0)
                       .map((k) => {
-                        const v = (((item as any).condition_counts ?? {}) as Record<string, number>)[k];
+                        const reserved = (item as any).quantity_reserved ?? 0;
+                        const rawCounts = ((item as any).condition_counts ?? {}) as Record<string, number>;
+                        const rawTotal = Object.values(rawCounts).reduce((a, b) => a + b, 0);
+                        const visibleTotal = rawTotal - reserved;
+                        const v = visibleTotal > 0 ? Math.max(0, Math.round((rawCounts[k] / rawTotal) * visibleTotal)) : 0;
+                        if (v <= 0) return null;
                         return (
                           <Badge key={k} className={CONDITION_COLORS[k]}>
                             {v} {k.charAt(0).toUpperCase() + k.slice(1)}
@@ -307,7 +312,7 @@ export default function Index() {
                         <ArrowRightLeft className="h-4 w-4" /> Check Out
                       </Button>
                     ) : null}
-                    {item.quantity_available < item.total_quantity && (
+                    {item.quantity_available < (item.total_quantity - ((item as any).quantity_reserved ?? 0)) && (
                       <Button variant="outline" className="w-full gap-2" onClick={() => openReturn(item)}>
                         <ArrowRightLeft className="h-4 w-4" /> Return
                       </Button>
