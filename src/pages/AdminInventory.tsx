@@ -41,6 +41,7 @@ export default function AdminInventory() {
     quantity_available: 1,
     quantity_reserved: 0,
     condition_counts: { good: 1 } as ConditionCounts,
+    reserved_condition_counts: {} as ConditionCounts,
   });
 
   const { data: equipment = [] } = useQuery({
@@ -94,6 +95,7 @@ export default function AdminInventory() {
         total_quantity: form.total_quantity,
         quantity_available: form.quantity_available,
         quantity_reserved: form.quantity_reserved,
+        reserved_condition_counts: form.reserved_condition_counts as unknown as Json,
         condition_counts: form.condition_counts as unknown as Json,
       };
       if (editing) {
@@ -138,11 +140,12 @@ export default function AdminInventory() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", notes: "", total_quantity: 1, quantity_available: 1, quantity_reserved: 0, condition_counts: { good: 1 } }); setDialogOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", notes: "", total_quantity: 1, quantity_available: 1, quantity_reserved: 0, condition_counts: { good: 1 }, reserved_condition_counts: {} }); setDialogOpen(true); };
   const openEdit = (item: Equipment) => {
     setEditing(item);
     const counts = (item as any).condition_counts as ConditionCounts ?? { [item.condition]: item.total_quantity };
-    setForm({ name: item.name, category: item.category, notes: item.notes || "", total_quantity: item.total_quantity, quantity_available: item.quantity_available, quantity_reserved: (item as any).quantity_reserved ?? 0, condition_counts: counts });
+    const resCounts = (item as any).reserved_condition_counts as ConditionCounts ?? {};
+    setForm({ name: item.name, category: item.category, notes: item.notes || "", total_quantity: item.total_quantity, quantity_available: item.quantity_available, quantity_reserved: (item as any).quantity_reserved ?? 0, condition_counts: counts, reserved_condition_counts: resCounts });
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
@@ -433,12 +436,47 @@ export default function AdminInventory() {
                 })()}
               </div>
             </div>
+            {form.quantity_reserved > 0 && (
+              <div>
+                <Label className="mb-2 block">Reserved Condition Breakdown</Label>
+                <p className="text-xs text-muted-foreground mb-2">Specify which conditions the {form.quantity_reserved} reserved items are in.</p>
+                <div className="space-y-2 rounded-md border p-3">
+                  {CONDITIONS.map((c) => (
+                    <div key={c} className="flex items-center gap-3">
+                      <span className="w-24 text-sm capitalize">{c}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={(form.condition_counts[c] ?? 0)}
+                        className="h-8 w-20"
+                        value={form.reserved_condition_counts[c] ?? 0}
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(form.condition_counts[c] ?? 0, parseInt(e.target.value) || 0));
+                          setForm({ ...form, reserved_condition_counts: { ...form.reserved_condition_counts, [c]: val } });
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">/ {form.condition_counts[c] ?? 0} total</span>
+                    </div>
+                  ))}
+                  {(() => {
+                    const sum = Object.values(form.reserved_condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0;
+                    return sum !== form.quantity_reserved ? (
+                      <p className="text-xs text-destructive mt-1">Reserved condition counts ({sum}) must equal reserved quantity ({form.quantity_reserved})</p>
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+            )}
             
             <div><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Serial number, notes..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!form.name || saveMutation.isPending || (Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.total_quantity}>
+            <Button onClick={() => saveMutation.mutate()} disabled={
+              !form.name || saveMutation.isPending ||
+              (Object.values(form.condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.total_quantity ||
+              (form.quantity_reserved > 0 && (Object.values(form.reserved_condition_counts).reduce((a, b) => (a ?? 0) + (b ?? 0), 0) ?? 0) !== form.quantity_reserved)
+            }>
               {saveMutation.isPending ? "Saving..." : editing ? "Update" : "Add"}
             </Button>
           </DialogFooter>
