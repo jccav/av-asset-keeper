@@ -39,6 +39,7 @@ export default function AdminInventory() {
     notes: "",
     total_quantity: 1,
     quantity_available: 1,
+    quantity_reserved: 0,
     condition_counts: { good: 1 } as ConditionCounts,
   });
 
@@ -92,6 +93,7 @@ export default function AdminInventory() {
         is_available: form.quantity_available > 0,
         total_quantity: form.total_quantity,
         quantity_available: form.quantity_available,
+        quantity_reserved: form.quantity_reserved,
         condition_counts: form.condition_counts as unknown as Json,
       };
       if (editing) {
@@ -136,11 +138,11 @@ export default function AdminInventory() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", notes: "", total_quantity: 1, quantity_available: 1, condition_counts: { good: 1 } }); setDialogOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: "", category: "audio", notes: "", total_quantity: 1, quantity_available: 1, quantity_reserved: 0, condition_counts: { good: 1 } }); setDialogOpen(true); };
   const openEdit = (item: Equipment) => {
     setEditing(item);
     const counts = (item as any).condition_counts as ConditionCounts ?? { [item.condition]: item.total_quantity };
-    setForm({ name: item.name, category: item.category, notes: item.notes || "", total_quantity: item.total_quantity, quantity_available: item.quantity_available, condition_counts: counts });
+    setForm({ name: item.name, category: item.category, notes: item.notes || "", total_quantity: item.total_quantity, quantity_available: item.quantity_available, quantity_reserved: (item as any).quantity_reserved ?? 0, condition_counts: counts });
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
@@ -187,7 +189,12 @@ export default function AdminInventory() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
-                      <TableCell>{item.quantity_available} / {item.total_quantity}</TableCell>
+                      <TableCell>
+                        {item.quantity_available} / {item.total_quantity}
+                        {((item as any).quantity_reserved ?? 0) > 0 && (
+                          <span className="ml-1 text-xs text-muted-foreground">({(item as any).quantity_reserved} reserved)</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {Object.entries((item as any).condition_counts ?? {}).filter(([, v]) => (v as number) > 0).map(([k, v]) => (
@@ -258,7 +265,12 @@ export default function AdminInventory() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{CATEGORY_LABELS[item.category]}</TableCell>
-                      <TableCell>{item.quantity_available} / {item.total_quantity}</TableCell>
+                      <TableCell>
+                        {item.quantity_available} / {item.total_quantity}
+                        {((item as any).quantity_reserved ?? 0) > 0 && (
+                          <span className="ml-1 text-xs text-muted-foreground">({(item as any).quantity_reserved} reserved)</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {Object.entries((item as any).condition_counts ?? {}).filter(([, v]) => (v as number) > 0).map(([k, v]) => (
@@ -370,18 +382,28 @@ export default function AdminInventory() {
                 <SelectContent>{Object.entries(CATEGORY_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label>Total Quantity</Label>
                 <Input type="number" min={1} value={form.total_quantity} onChange={(e) => {
                   const total = Math.max(1, parseInt(e.target.value) || 1);
-                  setForm({ ...form, total_quantity: total, quantity_available: Math.min(form.quantity_available, total) });
+                  const reserved = Math.min(form.quantity_reserved, total);
+                  const available = Math.min(form.quantity_available, total - reserved);
+                  setForm({ ...form, total_quantity: total, quantity_reserved: reserved, quantity_available: available });
                 }} />
               </div>
               <div>
                 <Label>Available</Label>
-                <Input type="number" min={0} max={form.total_quantity} value={form.quantity_available} onChange={(e) => {
-                  setForm({ ...form, quantity_available: Math.max(0, Math.min(form.total_quantity, parseInt(e.target.value) || 0)) });
+                <Input type="number" min={0} max={form.total_quantity - form.quantity_reserved} value={form.quantity_available} onChange={(e) => {
+                  setForm({ ...form, quantity_available: Math.max(0, Math.min(form.total_quantity - form.quantity_reserved, parseInt(e.target.value) || 0)) });
+                }} />
+              </div>
+              <div>
+                <Label>Reserved</Label>
+                <Input type="number" min={0} max={form.total_quantity} value={form.quantity_reserved} onChange={(e) => {
+                  const reserved = Math.max(0, Math.min(form.total_quantity, parseInt(e.target.value) || 0));
+                  const available = Math.min(form.quantity_available, form.total_quantity - reserved);
+                  setForm({ ...form, quantity_reserved: reserved, quantity_available: available });
                 }} />
               </div>
             </div>

@@ -107,6 +107,7 @@ export type Database = {
           name: string
           notes: string | null
           quantity_available: number
+          quantity_reserved: number
           total_quantity: number
           updated_at: string
         }
@@ -122,6 +123,7 @@ export type Database = {
           name: string
           notes?: string | null
           quantity_available?: number
+          quantity_reserved?: number
           total_quantity?: number
           updated_at?: string
         }
@@ -137,6 +139,7 @@ export type Database = {
           name?: string
           notes?: string | null
           quantity_available?: number
+          quantity_reserved?: number
           total_quantity?: number
           updated_at?: string
         }
