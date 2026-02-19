@@ -455,7 +455,7 @@ export default function AdminInventory() {
                           setForm({ ...form, reserved_condition_counts: { ...form.reserved_condition_counts, [c]: val } });
                         }}
                       />
-                      <span className="text-xs text-muted-foreground">/ {form.condition_counts[c] ?? 0} total</span>
+                      
                     </div>
                   ))}
                   {(() => {
