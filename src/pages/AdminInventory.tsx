@@ -270,7 +270,7 @@ export default function AdminInventory() {
       </Tabs>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Equipment" : "Add Equipment"}</DialogTitle>
             <DialogDescription>{editing ? "Update equipment details." : "Add a new piece of equipment to inventory."}</DialogDescription>
