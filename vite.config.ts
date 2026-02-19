@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "./",  // <-- ADD THIS LINE to fix the white screen on GitHub Pages
+  base: "/av-asset-keeper/", // ✅ IMPORTANT FIX
   server: {
     host: "::",
     port: 8080,
